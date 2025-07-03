@@ -1,64 +1,165 @@
-# PureSet
+# **PureSet**
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
+![Python Version](https://img.shields.io/badge/Python-3.7+-blue.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)
+![Version](https://img.shields.io/badge/Version-1.0.250702.0-brightgreen.svg)
 
-PureSet is an **immutable, ordered, and homogeneous collection** for Python 3.9+. It combines the best aspects of sequences and sets, ensuring **uniqueness, type consistency, and fast membership testing**.
+**PureSet** is a powerful **immutable**, **ordered**, and **hashable** collection type for Python that ensures **type homogeneity**. It seamlessly combines the benefits of sequences and sets, making it ideal for advanced Python programming in production environments.
 
-## Features
+## **Why Use PureSet?**
 
-- Immutable, ordered collections.
-- Ensures all elements are of the same type.
-- Supports basic set operations (union, intersection, difference).
-- Optimized for performance with hashability checks.
+- **Immutability:** Guarantees data integrity by maintaining unchangeable collections.
+- **Order Preservation:** Retains the order of elements, making it an excellent substitute for `Enums` or priority lists.
+- **Hashable Elements:** Allows storage in mappings like dictionaries or sets.
+- **Type Consistency:** Ensures all elements in a `PureSet` are of the same type.
+- **Efficient Membership Access:** Supports fast membership testing and retrieval.
 
-## Installation
+---
 
-Install using PyPI:
+## **Real-World Use Cases**
+
+### 1. **Replacing Enums for Predefined States**
+
+```python
+from pureset import PureSet
+
+# Define a set of possible states
+OrderStatus = PureSet("Pending", "Processing", "Shipped", "Delivered")
+
+# Membership Testing
+status = "Shipped"
+if status in OrderStatus:
+    print(f"'{status}' is a valid order status.")
+
+# Enforcing Validity
+def update_order_status(new_status: str):
+    if new_status not in OrderStatus:
+        raise ValueError(f"'{new_status}' is an invalid order status.")
+    print(f"Order status updated to: {new_status}")
+
+update_order_status("Processing")
+```
+
+---
+
+### 2. **Lookup Table for Roles or Access Levels**
+
+```python
+# Define Roles
+ACCESS_ROLES = PureSet("Admin", "Editor", "Contributor", "Viewer")
+
+# Enforcing Access Control
+def check_access(user_role: str):
+    if user_role not in ACCESS_ROLES:
+        raise PermissionError(f"Unrecognized role: {user_role}")
+    print(f"Access granted for role: {user_role}")
+
+check_access("Admin")
+```
+
+---
+
+### 3. **Maintaining Unique, Immutable Task Priorities**
+
+```python
+# Priority Levels
+Priorities = PureSet("High", "Medium", "Low")
+
+# Reversing Priority Levels
+print(Priorities.reverse())  # Outputs: PureSet('Low', 'Medium', 'High')
+```
+
+---
+
+### 4. **Predictive Membership Matching in Data Pipelines**
+
+```python
+def filter_valid_data(data_stream):
+    valid_keywords = PureSet("keyword1", "keyword2", "keyword3")
+    return [data for data in data_stream if data in valid_keywords]
+
+# Incoming Data Stream
+data = ["keyword1", "unknown", "keyword2", "anything"]
+
+# Filter Valid Data
+filtered = filter_valid_data(data)
+print(filtered)  # Outputs: ['keyword1', 'keyword2']
+```
+
+---
+
+## **Key API Highlights**
+
+### **Creation**
+
+```python
+ps = PureSet(1, 2, 3, 2)  # Automatically removes duplicates
+empty_ps = PureSet()      # Creates an empty PureSet
+```
+
+### **Set Operations**
+
+```python
+ps1 = PureSet(1, 2, 3)
+ps2 = PureSet(2, 3, 4)
+
+print(ps1 | ps2)  # Union: PureSet(1, 2, 3, 4)
+print(ps1 & ps2)  # Intersection: PureSet(2, 3)
+print(ps1 - ps2)  # Difference: PureSet(1)
+print(ps1 ^ ps2)  # Symmetric Difference: PureSet(1, 4)
+```
+
+### **Type Safety**
+
+```python
+# Raises TypeError if element types differ
+PureSet("string", 123)
+```
+
+### **Membership Testing**
+
+```python
+ps = PureSet("a", "b", "c")
+
+print("a" in ps)  # True
+print(ps.get("d", "Not Found"))  # Default Value
+```
+
+### **Sorting**
+
+```python
+ps = PureSet(3, 1, 4, 2)
+sorted_ps = ps.sorted()  # PureSet(1, 2, 3, 4)
+```
+
+---
+
+## **Installation**
+
+Install via PyPI:
 
 ```bash
 pip install pureset
 ```
 
-## Usage Examples
+---
 
-```python
-from pureset import PureSet
+## **Running Tests**
 
-# Create a PureSet instance
-ps = PureSet(1, 2, 3, 2)
-
-# Immutability
-try:
-    ps[0] = 10
-except AttributeError:
-    print("PureSet is immutable!")
-
-# Set operations
-ps1 = PureSet(1, 2, 3)
-ps2 = PureSet(2, 3, 4)
-print(ps1 | ps2)  # Union: PureSet(1, 2, 3, 4)
-print(ps1 & ps2)  # Intersection: PureSet(2, 3)
-
-# Type consistency
-try:
-    ps = PureSet(1, "string", 3.0)
-except TypeError as e:
-    print(e)
-```
-
-## Tests
-
-Run the following to execute unit tests:
+Run unit tests to verify functionality:
 
 ```bash
 pytest tests/
 ```
 
-## Contribution Guidelines
+---
 
-Contributions are welcome! Please submit pull requests or raise issues on the [GitHub repository](https://github.com/gabrielmsilva00/PureSet).
+## **Contributions**
 
-## License
+We welcome contributions! Please refer to the [GitHub repository](https://github.com/gabrielmsilva00/PureSet) for guidelines. Issues and pull requests are encouraged.
 
-This library is licensed under the [Apache License 2.0](LICENSE).
+---
+
+## **License**
+
+This project is licensed under the [Apache License 2.0](LICENSE).
