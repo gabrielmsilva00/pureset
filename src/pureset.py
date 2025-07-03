@@ -17,9 +17,11 @@ from typing import Any, TypeVar, Union, Optional, Callable, Iterator, overload
 
 # ------------------------------------------------------------
 __title__ = "PureSet"
-__version__ = "1.0.250702.0"
+__desc__ = "An immutable, homogeneous, and ordered collection type for Python."
+__version__ = "1.0.250703.0"
 __author__ = "gabrielmsilva00"
-__repo__ = "github.com/gabrielmsilva00/PureSet.git"
+__contact__ = "gabrielmaia.silva00@gmail.com"
+__repo__ = "github.com/gabrielmsilva00/PureSet"
 __license__ = "Apache License 2.0"
 
 __all__ = ["PureSet"]
