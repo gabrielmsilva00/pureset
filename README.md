@@ -11,7 +11,7 @@
 - **Immutability:** Guarantees data integrity by maintaining unchangeable collections.
 - **Order Preservation:** Retains the order of elements, making it an excellent substitute for `Enums` or priority lists.
 - **Hashable Elements:** Allows storage in mappings like dictionaries or sets.
-- **Type Consistency:** Ensures all elements in a `PureSet` are of the same type.
+- **Type Consistency:** Ensures all elements in a `PureSet` are of the same type (and same shape for structs).
 - **Efficient Membership Access:** Supports fast membership testing and retrieval.
 
 ---
