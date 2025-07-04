@@ -8,8 +8,9 @@
 </p>
 
 #### PureSet is an immutable, ordered, and hashable collection type for Python.
-It ensures type homogeneity across elements, making it a robust replacement for both sets and sequences in production applications.
-PureSet offers accuracy, predictability, and clarity in managing homogeneous data structures.
+It ensures **type homogeneity** across elements, making it a robust **replacement for both sets and sequences** in production applications.
+
+**PureSet** offers accuracy, predictability, and clarity in managing **homogeneous data structures**.
 
 ## **Core Features**
 - **Immutability:** Elements cannot be changed after creation; assures data integrity.
