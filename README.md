@@ -17,7 +17,7 @@ To install the `PureSet` package, simply use pip:
 ```bash
 pip install pureset
 ```
-- **Python Versions**: Compatible with Python 3.7 and above.
+- **Python Versions**: Compatible with Python 3.9+.
 - **Dependencies**: Pure Python, with no additional dependencies.
 ---
 
