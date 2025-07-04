@@ -1,6 +1,5 @@
-# **PureSet**
-
 ![PureSet](./img/PureSet.svg)
+# **PureSet**
 ![Python Version](https://img.shields.io/badge/Python-3.9+-blue.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)
 ![Version](https://img.shields.io/badge/Version-1.0.250704.0-brightgreen.svg)
