@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
 
-from src.pureset import PureSet
+from pureset import PureSet
 
 
 class TestTypedSequence(unittest.TestCase):
