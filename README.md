@@ -5,6 +5,7 @@
 ![Version](https://img.shields.io/badge/Version-1.0.250702.0-brightgreen.svg)
 
 **PureSet** is a robust **immutable**, **ordered**, and **hashable** collection type for Python designed specifically for high-performance, professional-level applications. It enforces **type homogeneity** and uniquely combines the functionalities of sets and sequences, making it a cutting-edge solution for advanced use cases.
+
 ---
 
 ## **Core Features**
