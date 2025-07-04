@@ -2,13 +2,17 @@
 
 import unittest
 import sys
+import os
 import timeit
 import pickle
 import copy
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
-from pureset import PureSet
+sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
+
+from src.pureset import PureSet
 
 
 class TestTypedSequence(unittest.TestCase):
@@ -40,7 +44,7 @@ class TestTypedSequence(unittest.TestCase):
 
         with self.assertRaises(TypeError) as cm:
             PureSet(10, 20.0, 30)
-        self.assertIn("Expected int", str(cm.exception))
+        self.assertIn("<class 'int'>", str(cm.exception))
 
     def test_string_bytes_elements(self):
         """Test strings and bytes as elements."""
@@ -175,7 +179,7 @@ class TestTypedSequence(unittest.TestCase):
 
     def test_performance(self):
         """Test performance characteristics."""
-        setup = "from pureset import PureSet; ts = PureSet(*range(1000))"
+        setup = "from src.pureset import PureSet; ts = PureSet(*range(1000))"
 
         int_time = timeit.timeit("ts[500]", setup, number=100000)
         val_time = timeit.timeit("ts[500]", setup, number=100000)
@@ -184,7 +188,7 @@ class TestTypedSequence(unittest.TestCase):
         self.assertLess(val_time, 0.1)
 
         data = list(range(1000)) * 2
-        setup = f"from pureset import PureSet; data = {data}"
+        setup = f"from src.pureset import PureSet; data = {data}"
         creation_time = timeit.timeit("PureSet(*data)", setup, number=100)
 
         self.assertLess(creation_time, 1.0)
@@ -223,26 +227,33 @@ class TestTypedSequence(unittest.TestCase):
                 ("Peter", "Bob"),
                 (1, 2, 3),
             )
-        self.assertIn("Incompatible element types", str(cm.exception))
+        self.assertIn("Incompatible", str(cm.exception))
 
     def test_dict_equality(self):
         """Tests equality between dict entries."""
         ts = PureSet(
-            {"John": 15},
-            {"Maria": 20},
-            {"John": 20},
+            {"id": 0, "name": "John", "age": 15},
+            {"id": 1, "name": "Maria", "age": 20},
+            {"id": 2, "name": "John", "age": 25},
         )
 
-        self.assertEqual(ts[0] is {"John": 15}, False)
-        self.assertEqual(ts[0] is ts[0], True)
-        self.assertEqual(ts[0] == {"John": 15}, True)
-        self.assertEqual(ts[1], {"Maria": 20})
+        self.assertEqual(ts[0] == {"id": 0, "name": "John", "age": 15}, True)
+        self.assertEqual(ts[0] == {"id": 1, "name": "Maria", "age": 20}, False)
+        self.assertEqual(ts[1], {"id": 1, "name": "Maria", "age": 20})
 
-        ts2 = PureSet({"John": 15}, {"Maria": 20}, {"John": 20})
+        ts2 = PureSet(
+            {"id": 0, "name": "John", "age": 15},
+            {"id": 1, "name": "Maria", "age": 20},
+            {"id": 2, "name": "John", "age": 25},
+        )
         self.assertEqual(ts, ts2)
         self.assertEqual(ts[0], ts2[0])
 
-        ts3 = PureSet({"John": 20}, {"Maria": 20}, {"John": 15})
+        ts3 = PureSet(
+            {"id": 0, "name": "John", "age": 25},
+            {"id": 1, "name": "Maria", "age": 20},
+            {"id": 2, "name": "John", "age": 15},
+        )
         self.assertNotEqual(ts, ts3)
         self.assertNotEqual(ts[0], ts3[0])
 
@@ -254,7 +265,7 @@ class TestTypedSequence(unittest.TestCase):
                 {2.5: "Maria"},
                 {"Peter": 20},
             )
-        self.assertIn("Incompatible element types", str(cm.exception))
+        self.assertIn("Incompatible", str(cm.exception))
 
     def test_contains_operator(self):
         """Test __contains__ operator (in)."""
@@ -382,7 +393,7 @@ class TestTypedSequence(unittest.TestCase):
         self.assertEqual(hash(ts), hash(unpickled))
 
         # Test with complex types
-        ts_complex = PureSet({"a": 1}, {"b": 2}, {"c": 3})
+        ts_complex = PureSet({"a", "b", "c"}, {"x", "y", "z"}, {"1", "2", "3"})
         pickled_complex = pickle.dumps(ts_complex)
         unpickled_complex = pickle.loads(pickled_complex)
 
@@ -520,6 +531,31 @@ class TestTypedSequence(unittest.TestCase):
             self.assertEqual(val, i)
             self.assertTrue(contains)
             self.assertEqual(count, 1)
+
+    def test_signature(self):
+        """Test .signature property."""
+        ts1 = PureSet(
+            {"id": 0, "name": "John", "age": 15},
+            {"id": 1, "name": "Alice", "age": 20},
+            {"id": 2, "name": "Bob", "age": 25},
+        )
+        sig = ts1.signature
+        self.assertEqual(sig, (dict, {"id": int, "name": str, "age": int}))
+        
+        ts2 = PureSet(
+            {"id": 0, "name": "John", "age": 15},
+            {"id": 1, "name": "Alice", "age": 20},
+            {"id": 2, "name": "Bob", "age": 25},
+        )
+        self.assertEqual(ts1.signature, ts2.signature)
+        self.assertTrue(ts1.compatible(ts2))
+        
+        data = PureSet(
+            [[0.2, 0.4, 0.8, "a", "b", "c"], True],
+            [[0.1, 0.2, 0.3, "x", "y", "z"], False],
+            [[0.3, 0.4, 0.5, "d", "e", "f"], False],
+        )
+        self.assertEqual(data.signature, (tuple, (tuple, (float, 3), (str, 3)), bool))
 
 
 if __name__ == "__main__":

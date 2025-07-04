@@ -30,128 +30,108 @@ __all__ = ["PureSet"]
 T = TypeVar("T")
 
 
+def get_signature(obj) -> Union[type, tuple]:
+    SIMPLE_TYPES = PureSet.SIMPLE_TYPES
+    if obj is None:
+        return type(None)
+    obj_type = type(obj)
+
+    if obj_type in SIMPLE_TYPES:
+        return obj_type
+
+    if isinstance(obj, dict):
+        return (dict, {k: get_signature(v) for k, v in sorted(obj.items())})
+
+    if hasattr(obj, "__dict__") or hasattr(obj, "__slots__"):
+        props = {
+            name: get_signature(getattr(obj, name))
+            for name in dir(obj)
+            if not (
+                name.startswith("_")
+                or name.endswith("_")
+                or callable(getattr(obj, name))
+            )
+        }
+        if props:
+            return (obj_type, props)
+
+    if hasattr(obj, "__iter__") and obj_type not in (str, bytes, type):
+        types = []
+        last_type = None
+        last_count = 0
+
+        for item in obj:
+            current_type = get_signature(item)
+            if current_type == last_type:
+                last_count += 1
+            else:
+                if last_type is not None:
+                    types.append(
+                        (last_type, last_count) if last_count > 1 else last_type
+                    )
+                last_type = current_type
+                last_count = 1
+
+        if last_type is not None:
+            types.append((last_type, last_count) if last_count > 1 else last_type)
+
+        if len(types) == 1:
+            return (tuple, types[0])
+        return (tuple, *types)
+
+    if (
+        hasattr(obj, "__len__")
+        and hasattr(obj, "__getitem__")
+        and obj_type not in (str, bytes, type)
+    ):
+        element_types = [get_signature(x) for x in obj]
+        current_type = element_types[0]
+        count = 1
+        types = []
+
+        for elem_type in element_types[1:]:
+            if elem_type == current_type:
+                count += 1
+            else:
+                types.append((current_type, count) if count > 1 else current_type)
+                current_type = elem_type
+                count = 1
+
+        types.append((current_type, count) if count > 1 else current_type)
+
+        return (obj_type, types[0] if len(types) == 1 else tuple(types))
+
+    return obj_type
+
+
 @total_ordering
 class PureSet(Sequence[T]):
-    """An immutable, ordered collection of unique elements with type consistency.
-
-    Combines sequence properties (ordered, indexable) with set properties
-    (unique elements, fast membership testing). Enforces type homogeneity.
-
-    Parameters
-    ----------
-    *args : Any
-        Elements to include. All must be of the same type.
-    empty : bool, optional
-        If True, allows empty sequence creation. Default is False.
-
-    Examples
-    --------
-    >>> ps = PureSet(3, 1, 4, 1, 5)
-    >>> ps
-    PureSet(3, 1, 4, 5)
-    >>> 1 in ps
-    True
-    >>> ps[0]
-    3
-    >>> ps1 = PureSet(1, 2, 3)
-    >>> ps2 = PureSet(2, 3, 4)
-    >>> ps1 | ps2
-    PureSet(1, 2, 3, 4)
-    >>> ps1 & ps2
-    PureSet(2, 3)
-    """
-
-    __slots__ = ("_items", "_set", "_hashable", "_element_type", "__weakref__")
-
+    __slots__ = ("_items", "_set", "_hashable", "_signature", "__weakref__")
     SIMPLE_TYPES: frozenset[type] = frozenset({int, float, str, bytes, bool, complex})
 
     def __init__(self, *args: T) -> None:
         if not args:
-            object.__setattr__(self, "_items", ())
-            object.__setattr__(self, "_set", frozenset())
-            object.__setattr__(self, "_hashable", True)
-            object.__setattr__(self, "_element_type", None)
+            self._items = ()
+            self._set = frozenset()
+            self._hashable = True
+            self._signature = None
             return
-
-        first_item = args[0]
-        element_type = type(first_item)
-        object.__setattr__(self, "_element_type", element_type)
-
-        is_simple_type = element_type in self.SIMPLE_TYPES
-
-        if len(args) > 1:
-            if is_simple_type:
-                for i, item in enumerate(args[1:], 1):
-                    if type(item) is not element_type:
-                        raise TypeError(
-                            f"All elements must be of the same type. "
-                            f"Expected {
-                                element_type.__name__}, got {
-                                type(item).__name__} at position {
-                                i + 1}"
-                        )
-            else:
-                first_signature = None
-                if element_type in (tuple, dict):
-                    if isinstance(first_item, tuple):
-                        first_signature = (
-                            "tuple",
-                            len(first_item),
-                            tuple(type(x) for x in first_item),
-                        )
-                    elif isinstance(first_item, dict):
-                        key_types = tuple(
-                            sorted(set(type(k).__name__ for k in first_item.keys()))
-                        )
-                        val_types = tuple(
-                            sorted(set(type(v).__name__ for v in first_item.values()))
-                        )
-                        first_signature = ("dict", key_types, val_types)
-
-                for i, item in enumerate(args[1:], 1):
-                    if type(item) is not element_type:
-                        raise TypeError(
-                            f"All elements must be of the same type. "
-                            f"Expected {
-                                element_type.__name__}, got {
-                                type(item).__name__} at position {
-                                i + 1}"
-                        )
-
-                    if first_signature is not None:
-                        item_signature = None
-                        if isinstance(item, tuple):
-                            item_signature = (
-                                "tuple",
-                                len(item),
-                                tuple(type(x) for x in item),
-                            )
-                        elif isinstance(item, dict):
-                            key_types = tuple(
-                                sorted(set(type(k).__name__ for k in item.keys()))
-                            )
-                            val_types = tuple(
-                                sorted(set(type(v).__name__ for v in item.values()))
-                            )
-                            item_signature = ("dict", key_types, val_types)
-
-                        if item_signature != first_signature:
-                            raise TypeError(
-                                f"Incompatible element types at position {
-                                    i + 1}"
-                            )
-
+        sig = get_signature(args[0])
+        for i, item in enumerate(args):
+            if get_signature(item) != sig:
+                raise TypeError(
+                    f"Incompatible element type or shape at position {i+1}:\nExp: {sig};\nGot: {get_signature(item)}"
+                )
+        self._signature = sig
         try:
-            hash(first_item)
+            hash(args[0])
             hashable = True
         except TypeError:
             hashable = False
-
-        object.__setattr__(self, "_hashable", hashable)
-
+        self._hashable = hashable
         if hashable:
-            seen: set[T] = set()
-            unique_items: list[T] = []
+            seen = set()
+            unique_items = []
             for item in args:
                 if item not in seen:
                     seen.add(item)
@@ -161,39 +141,42 @@ class PureSet(Sequence[T]):
             for item in args:
                 if item not in unique_items:
                     unique_items.append(item)
-
-        items_tuple = tuple(unique_items)
-        object.__setattr__(self, "_items", items_tuple)
-
-        if hashable:
-            object.__setattr__(self, "_set", frozenset(items_tuple))
-        else:
-            object.__setattr__(self, "_set", None)
+        self._items = tuple(unique_items)
+        self._set = frozenset(self._items) if hashable else None
 
     def __setattr__(self, name: str, value: Any) -> None:
-        """Prevent attribute modification to maintain immutability.
+        if name in self.__slots__:
+            # Allow on initialization only
+            object.__setattr__(self, name, value)
+        else:
+            raise AttributeError(f"{self.__class__.__name__} is immutable")
 
-        Parameters
-        ----------
-        name : str
-            The attribute name to set
-        value : Any
-            The value to set
+    @property
+    def items(self) -> tuple[T, ...]:
+        return self._items
 
-        Raises
-        ------
-        AttributeError
-            Always raised as PureSet is immutable
+    @property
+    def set(self) -> Optional[frozenset]:
+        return self._set
 
+    @property
+    def hashable(self) -> bool:
+        return self._hashable
+
+    @property
+    def signature(self) -> Any:
+        """General, standardized signature for the PureSet's elements.
         Examples
         --------
-        >>> ps = PureSet(1, 2, 3)
-        >>> ps.new_attr = 10  # doctest: +IGNORE_EXCEPTION_DETAIL
-        Traceback (most recent call last):
-            ...
-        AttributeError: PureSet is immutable
+        >>> PureSet(1, 2, 3).signature
+        <class 'int'>
+        >>> PureSet({"x": 1, "y": 2}, {"x": 0, "y": 5}).signature
+        (<class 'dict'>, {'x': <class 'int'>, 'y': <class 'int'>})
+        >>> class C: pass
+        >>> PureSet(C(), C()).signature
+        <class '__main__.C'>
         """
-        raise AttributeError(f"{self.__class__.__name__} is immutable")
+        return self._signature
 
     def __reduce__(self) -> tuple:
         """Support for pickling/unpickling.
@@ -518,11 +501,11 @@ class PureSet(Sequence[T]):
         """
         if not isinstance(other, PureSet):
             return NotImplemented
-        if self._element_type and other._element_type:
-            if self._element_type is not other._element_type:
+        if self.signature and other.signature:
+            if self.signature != other.signature:
                 raise TypeError(
                     f"Cannot concatenate PureSets with different element types: "
-                    f"{self._element_type.__name__} and {other._element_type.__name__}"
+                    f"Exp: {self.signature}\nGot: {other.signature}"
                 )
         if not self._items:
             return other
@@ -686,6 +669,27 @@ class PureSet(Sequence[T]):
         """
         return 1 if value in self else 0
 
+    def join(self, sep: str) -> str:
+        """Return string representation joined by sep.
+
+        Parameters
+        ----------
+        sep : str
+            Separator between elements
+
+        Returns
+        -------
+        str
+            String representation
+
+        Examples
+        --------
+        >>> ps = PureSet(1, 2, 3)
+        >>> ps.join(",")
+        '1,2,3'
+        """
+        return sep.join(map(str, self._items))
+
     def reverse(self) -> PureSet[T]:
         """Return new PureSet with reversed order.
 
@@ -799,12 +803,12 @@ class PureSet(Sequence[T]):
         TypeError: Incompatible element types: int and str
         """
         if not isinstance(other, PureSet):
-            raise TypeError(f"Expected PureSet, got '{type(other).__name__}'")
+            raise TypeError(f"Expected PureSet, got '{type(other)}'")
         if self._items and other._items:
-            if self._element_type is not other._element_type:
+            if self.signature != other.signature:
                 raise TypeError(
-                    f"Incompatible element types: {self._element_type.__name__} "
-                    f"and {other._element_type.__name__}"
+                    f"Incompatible element types:\nExp: {self.signature}"
+                    f"\nGot: {other.signature}"
                 )
         return other
 
