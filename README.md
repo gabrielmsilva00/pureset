@@ -10,7 +10,7 @@
 ## **Core Features**
 - **Ordered and Immutable:** Preserves the sequence of elements while ensuring data integrity through immutability.
 - **Fast Membership Testing:** Optimized for quick lookups and membership checks.
-- **Hashable and Type-Enforced:** Suitable for use as dictionary keys, ensuring all contained elements share the same data type.
+- **Hashable and Type-Enforced:** Suitable for use as dictionary keys, ensuring all contained elements share the same data type and shape.
 - **High-Performance Set-Like Operations:** Supports union, intersection, and other essential set operations.
 ---
 
