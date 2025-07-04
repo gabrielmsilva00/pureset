@@ -16,14 +16,13 @@
 ---
 
 ## **Use Cases**
-Here are concise and meaningful examples showcasing PureSet’s utility in Python production applications:
+```python
+from pureset import PureSet
+```
 
 ### **1. Enum Replacement for Constants**
 Define ordered constants for application states or configurations.
 ```python
-from pureset import PureSet
-
-# Define states as ordered constants
 WORKFLOW_STATES = PureSet("Draft", "Pending", "Approved", "Rejected")
 
 current_state = "Approved"
