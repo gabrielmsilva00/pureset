@@ -179,7 +179,7 @@ class TestTypedSequence(unittest.TestCase):
 
     def test_performance(self):
         """Test performance characteristics."""
-        setup = "from src.pureset import PureSet; ts = PureSet(*range(1000))"
+        setup = "from pureset import PureSet; ts = PureSet(*range(1000))"
 
         int_time = timeit.timeit("ts[500]", setup, number=100000)
         val_time = timeit.timeit("ts[500]", setup, number=100000)
@@ -188,7 +188,7 @@ class TestTypedSequence(unittest.TestCase):
         self.assertLess(val_time, 0.1)
 
         data = list(range(1000)) * 2
-        setup = f"from src.pureset import PureSet; data = {data}"
+        setup = f"from pureset import PureSet; data = {data}"
         creation_time = timeit.timeit("PureSet(*data)", setup, number=100)
 
         self.assertLess(creation_time, 1.0)
