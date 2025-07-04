@@ -7,7 +7,9 @@
 <a href=https://python.org/downloads><img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version" width=256 style="vertical-align:middle;margin:5px"><br/><a href=https://pypi.org/project/pureset><img src="https://img.shields.io/pypi/v/pureset.svg?logo=pypi" alt="Version" width=256 style="vertical-align:middle;margin:5px"><br/><a href=https://github.com/gabrielmsilva00/pureset><img src="https://img.shields.io/badge/GitHub-Repository-2A3746?logo=github" width=256 style="vertical-align:middle;margin:5px"><br/><a href="https://www.apache.org/licenses/LICENSE-2.0.txt"><img src="https://img.shields.io/badge/License-Apache%202.0-green.svg" alt="License" width=256 style="vertical-align:middle;margin:5px"><br/><a href=https://github.com/gabrielmsilva00/pureset/releases><img src="https://img.shields.io/pypi/dm/pureset?logo=pypi" alt="Version" width=256 style="vertical-align:middle;margin:5px">
 </p>
 
-#### PureSet is an immutable, ordered, and hashable collection type for Python. It ensures type homogeneity across elements, making it a robust replacement for both sets and sequences in production applications. PureSet offers accuracy, predictability, and clarity in managing homogeneous data structures.
+#### PureSet is an immutable, ordered, and hashable collection type for Python.
+It ensures type homogeneity across elements, making it a robust replacement for both sets and sequences in production applications.
+PureSet offers accuracy, predictability, and clarity in managing homogeneous data structures.
 
 ## **Core Features**
 - **Immutability:** Elements cannot be changed after creation; assures data integrity.
