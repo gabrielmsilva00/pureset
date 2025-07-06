@@ -1,146 +1,248 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/gabrielmsilva00/pureset/e920683cd8f19ac740eb1f06cc4df1a30a5fe5d1/img/PureSet.svg">
-  <h1 align="center">PureSet<h1/>
-</p>
 
 <p align="center">
-<a href=https://python.org/downloads><img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version" width=256 height=128 style="vertical-align:middle;margin:5px"><br/><a href=https://pypi.org/project/pureset><img src="https://img.shields.io/pypi/v/pureset.svg?logo=pypi" alt="Version" width=256 style="vertical-align:middle;margin:5px"><br/><a href=https://github.com/gabrielmsilva00/pureset><img src="https://img.shields.io/badge/GitHub-Repository-2A3746?logo=github" width=256 style="vertical-align:middle;margin:5px"><br/><a href="https://www.apache.org/licenses/LICENSE-2.0.txt"><img src="https://img.shields.io/badge/License-Apache%202.0-green.svg" alt="License" width=256 style="vertical-align:middle;margin:5px"><br/><a href=https://github.com/gabrielmsilva00/pureset/releases><img src="https://img.shields.io/pypi/dm/pureset?logo=pypi" alt="Version" width=256 style="vertical-align:middle;margin:5px">
+<img src="https://raw.githubusercontent.com/gabrielmsilva00/pureset/e920683cd8f19ac740eb1f06cc4df1a30a5fe5d1/img/PureSet.svg"><br/>
+<a href="https://python.org/downloads"><img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version" width=256 style="vertical-align:middle;margin:5px"><br/>
+<a href="https://www.apache.org/licenses/LICENSE-2.0.txt"><img src="https://img.shields.io/badge/License-Apache%202.0-green.svg" alt="License" width=256 style="vertical-align:middle;margin:5px"><br/>
+<a href="https://github.com/gabrielmsilva00/pureset"><img src="https://img.shields.io/badge/GitHub-Repository-2A3746?logo=github" width=256 style="vertical-align:middle;margin:5px"><br/>
+<a href="https://pypi.org/project/pureset"><img src="https://img.shields.io/pypi/v/pureset.svg?logo=pypi" alt="Version" width=256 style="vertical-align:middle;margin:5px"><br/>
 </p>
+<p align="center">
+<h1 align="center">PureSet</h1>
+<h6 align="center">For general Python development matters, being this package or any, contact me at<br/><a href="mailto:gabrielmaia.silva00@gmail.com">gabrielmaia.silva00@gmail.com<a/><h6>
+</p>
+
+
+---
 
 #### PureSet is an immutable, ordered, and hashable collection type for Python.
+
 It ensures **type homogeneity** across elements, making it a robust **replacement for both sets and sequences** in production applications.
 
 **PureSet** offers _accuracy, predictability_, and _clarity_ in managing **homogeneous data structures**.
 
+###### v1.1 NOTE: Now with Numpy and Pandas data type support (see below)! Check changelog (TBA) for details.
+
+---
+
 ## **Core Features**
-- **Immutability:** Elements cannot be changed after creation; assures data integrity.
-- **Ordering:** Retains insertion sequence, making it predictable for iteration, exporting, or display use cases.
-- **Hashability:** Collections of hashable objects are themselves hashable; can be used as dictionary keys.
+
+- **Immutability:** Elements cannot be changed after creation; assures data integrity and reproducibility.
+- **Ordering:** Retains insertion sequence—predictable for iteration, exporting, or display use cases.
+- **Hashability:** Collections of hashable (and even nested) objects are themselves hashable; can be dictionary keys.
 - **Uniqueness:** Removes duplicates according to standard Python object equality.
-- **Type and Schema Homogeneity:** Strict enforcement that all elements are of not only the same type, but also of the same shape (for dicts and custom objects—by attribute/property names and types).
-- **Performance:** Optimized for high efficiency in membership, intersection, union, and set-like operations.
-- **Signature Inspection:** Provides a `.signature` property representing the canonical type/structure of the set’s contents, critical for debugging, API contracts, and documentation.
-- **Universal Container:** Works seamlessly with primitives, tuples, dicts, custom classes, and even mixed nested containers.
+- **Deep Type & Schema Homogeneity:** Strict enforcement that all elements are of the same type and "shape" (for nested dicts, arrays, pandas or custom classes: attributes/properties and value types are all enforced).
+- **Performance:** Optimized for high efficiency in membership, intersection, union, and set-like operations—even with very large sets.
+- **Signature Inspection:** `.signature` property represents the canonical type/structure of the set’s contents, for debugging, documentation, and dynamic runtime/schema checks.
+- **Universal Container:** Works seamlessly with primitives, tuples, dicts, custom classes, numpy arrays, pandas DataFrames/Series, UserString/UserList/etc., and even many mixed nested containers.
+- **Extensible:** Transparent support for new types via the "freeze/restore" protocol.
+- **Serialization Ready:** Supports pickling, as well as custom freeze/restore for efficient export/import (including cross-version/cross-platform).
+- **Advanced API:** Full set operations (`|`, `&`, `-`, `^`), mapping/filtering, slices, composition, custom schema validation patterns, and more.
+
 ---
 
 ## **Installation & Requirements**
-To install the `PureSet` package, simply use pip:
+
+To install the latest `PureSet` package, use pip:
+
 ```bash
-pip install pureset
+pip install -U pureset
 ```
-*   **Python Versions**: Compatible with Python 3.9 and above.
-*   **Dependencies**: Pure Python, with no external dependencies.
+
+- **Python Versions:** Compatible with Python 3.9 and above.
+- **Dependencies:** Pure Python, no required dependencies. Numpy|Pandas are *optional* for enhanced functionality.
+
 ---
 
-## **API Overview**
-This section presents expanded, realistic examples of `PureSet` in production-grade scenarios, demonstrating its capabilities beyond simple collections.
+## **Usage & API Overview**
 
-### **Real-World Usability**
-- **Contracts in APIs:** Require or emit only valid structures to callers; enforce contract at runtime.
-- **Data Pipelines (ETL):** Guarantee all records are clean, normalized, and of valid shape before aggregation or transformation.
-- **State Machines:** Prevent illegal state transitions by checking membership in a `PureSet` of allowed values.
-- **Unique Entity Sets:** Model deduplicated entities (users, objects, configurations) with order preserved and structure enforced.
-- **Distributed Computing:** Share, serialize, or hash-combine validated and immutable data blocks across processes or systems.
+This section presents realistic, production-focused examples that go well beyond simple unique containers.
 
-**PureSet’s** `.signature` is especially useful for audits, logging, debugging mismatches, and can be serialized for external schema verification.
+---
 
-```python
-from pureset import PureSet
+### **Basic Example Usage**
+
+```pycon
+>>> from pureset import PureSet
+
+>>> PureSet(1, 2, 3)
+PureSet(1, 2, 3)
+
+>>> PureSet(1, 2, 2, 3)
+PureSet(1, 2, 3)
+
+>>> PureSet("a", "b", "b")
+PureSet('a', 'b')
+
+>>> len(PureSet(8, 8, 9))
+2
 ```
 
-### **1. Robust Enum Replacement and State Management**
-`PureSet` provides a type-safe, ordered, and immutable alternative for defining a finite set of states or options, offering clear advantages over traditional string literals or basic tuples. It's particularly useful for defining state machine transitions or valid configuration options.
+---
 
-```python
-# Define a set of valid order states for an e-commerce system
-# The order guarantees a predictable sequence for UI display or reporting.
-ORDER_STATES = PureSet("Pending", "Processing", "Shipped", "Delivered", "Cancelled")
+### **Robust Enum Replacement | State Management**
 
-def process_order_status_update(order_id: str, new_status: str) -> None:
-    if new_status not in ORDER_STATES:
-        raise ValueError(
-            f"Invalid order status '{new_status}' for order {order_id}.\n"
-            f"Allowed states are: [{ORDER_STATES.join(' | ')}]"
-        )
+Type-safe, ordered, and immutable replacement for sets of valid states/options.
 
-    # In a real system, this would interact with a database or external service
-    print(f"Order {order_id}: Status updated to '{new_status}'.")
-
-
-# Simulate a valid status update
-process_order_status_update("ORD12345", "Shipped")
-
-# Simulate an invalid status update
-try:
-    process_order_status_update("ORD12346", "Returned")
-except ValueError as e:
-    print(e)
-    # Invalid order status 'Returned' for order ORD12346. 
-    # Allowed states are: [Pending | Processing | Shipped | Delivered | Cancelled]
+```pycon
+>>> ORDER_STATES = PureSet("Pending", "Processing", "Shipped", "Delivered", "Cancelled")
+>>> "Processing" in ORDER_STATES
+True
+>>> "Returned" in ORDER_STATES
+False
+>>> print(ORDER_STATES)
+PureSet('Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled')
 ```
 
-### **2. Validating Homogeneity and Schema Consistency for Complex Data Structures**
-When dealing with collections of dictionaries or custom objects in data processing pipelines or API interactions, ensuring all elements conform to a specific schema is paramount. `PureSet` enforces not just type homogeneity but also structural consistency, raising errors for schema mismatches.
-**NOTE:** `PureSet` always refers to the first element as a **validator** of all other elements given afterwards. You can always check the validator schema by using the `.signature` property.
+---
 
-```python
-# Define a PureSet of user profiles, each represented by a dictionary.
-# PureSet ensures all dictionaries have the same keys and value types.
-user_profiles = PureSet(
-    {"id": 1, "name": "Alice Smith", "age": 28, "email": "alice@example.com"},
-    {"id": 2, "name": "Bob Johnson", "age": 35, "email": "bob@example.com"},
-)
+### **Contracts & API Schema Checking**
 
-# Attempt to add a profile with a mismatched schema (e.g., missing 'email' or different key)
-try:
-    mismatched_profiles = PureSet(
-        {"id": 3, "name": "Charlie Brown", "age": 42, "email": "charlie@example.com"},
-        {"id": 4, "name": "Diana Prince", "years_old": 30},  # Schema mismatch
-    )
-except TypeError as e:
-    print(e)
-    # Incompatible element type or shape at position 2:
-    # Exp: (<class 'dict'>, {'age': <class 'int'>, 'email': <class 'str'>, 'id': <class 'int'>, 'name': <class 'str'>});
-    # Got: (<class 'dict'>, {'id': <class 'int'>, 'name': <class 'str'>, 'years_old': <class 'int'>})
+PureSet as a runtime type-and-shape schema enforcer.
 
+```pycon
+>>> user_profiles = PureSet(
+...     {"id": 1, "name": "Alice Smith", "age": 28, "email": "alice@example.com"},
+...     {"id": 2, "name": "Bob Johnson", "age": 35, "email": "bob@example.com"},
+... )
+>>> user_profiles.signature
+(<class 'dict'>, {'age': <class 'int'>, 'email': <class 'str'>, 'id': <class 'int'>, 'name': <class 'str'>})
 
-# Example with nested tuples: PureSet enforces consistency for tuples with consistent internal types.
-data_points = PureSet((1, "x_coord", 10.5), (2, "y_coord", 20.3))
-
-# Attempt to create a PureSet with inconsistent tuple element types
-try:
-    invalid_data_points = PureSet(
-        (1, "x_coord", 10.5),
-        (2, "y_coord", "invalid_value"),  # Type mismatch within tuple
-    )
-except TypeError as e:
-    print(e)
-    # Incompatible element type or shape at position 2:
-    # Exp: (<class 'tuple'>, (<class 'int'>, <class 'str'>, <class 'float'>));
-    # Got: (<class 'tuple'>, (<class 'int'>, <class 'str'>, <class 'str'>))
+>>> # Mismatched schema!
+>>> PureSet(
+...     {"id": 1, "name": "Alice", "age": 28, "email": "alice@a.com"},
+...     {"id": 2, "name": "Bob", "years_old": 35}           # will fail!
+... )
+Traceback (most recent call last):
+    ...
+TypeError: Incompatible element type or shape at position 2:
+Exp: (<class 'dict'>, {'age': <class 'int'>, 'email': <class 'str'>, 'id': <class 'int'>, 'name': <class 'str'>});
+Got: (<class 'dict'>, {'id': <class 'int'>, 'name': <class 'str'>, 'years_old': <class 'int'>})
 ```
 
-### **6. Layer Validation in ML/DL Model Pipelines or Validation of Nested Containers**
-Handling sequences, matrix input, or data layer validation:
+---
 
-```python
-batch = PureSet(
-    ([1.4, 2.8, 3.1], 'class_a'),
-    ([0.9, 2.2, 3.5], 'class_b'),
-)
-print(batch.signature)
-# Output: (tuple, ([float, float, float], str))
+### **Validated Nested Data for ML|DL Pipelines**
+
+Reliable, transparent structure-checking for data with deep/complex layout.
+
+```pycon
+>>> batch = PureSet(
+...   ([1.4, 2.8, 3.1], 'class_a'),
+...   ([0.9, 2.2, 3.5], 'class_b'),
+... )
+>>> batch.signature
+(<class 'tuple'>, ((<class 'list'>, (<class 'float'>, 3)), <class 'str'>))
 ```
+
+---
+
+### **Deduplication and Set Algebra**
+
+Entries are always unique, preserving original order.
+
+```pycon
+>>> a = PureSet(1, 2, 3)
+>>> b = PureSet(3, 4, 2)
+>>> (a | b).to_list()
+[1, 2, 3, 4]
+>>> (a & b).to_list()
+[2, 3]
+>>> (a - b).to_list()
+[1]
+>>> (a ^ b).to_list()
+[1, 4]
+```
+
+---
+
+### **Using PureSet with Numpy and Pandas**
+
+```pycon
+>>> import numpy as np, pandas as pd
+>>> arr = np.array([1, 2, 3])
+>>> ps = PureSet(arr)
+>>> ps[0].shape
+(3,)
+
+>>> df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})
+>>> PureSet(df)[0].equals(df)
+True
+>>> idx = pd.Index([5, 7, 9])
+>>> PureSet(idx)[0].equals(idx)
+True
+```
+Mixing non-matching types (ndarray with list/tuple, DataFrame with list) will raise a `TypeError`.
+
+---
+
+### **Complex Custom Objects, NamedTuples, UserList, UserDict**
+
+```pycon
+>>> from collections import namedtuple, UserList, UserDict
+>>> Pt = namedtuple("Pt", "x y")
+>>> PureSet(Pt(2,3), Pt(3,4))[1]
+Pt(x=3, y=4)
+>>> ul = UserList([1,2,3])
+>>> PureSet(ul)[0]
+[1, 2, 3]
+>>> ud = UserDict({'foo': 99})
+>>> PureSet(ud)[0]
+{'foo': 99}
+```
+
+---
+
+### **Freeze/Restore: Reliable, Deep Immutability and Serialization**
+
+```pycon
+>>> x = [{'a': [1, 2]}, {'a': [3, 4]}]
+>>> frozen = PureSet.freeze(x)
+>>> PureSet.restore(frozen)
+[{'a': [1, 2]}, {'a': [3, 4]}]
+```
+
+---
+
+## **Advanced Features and Extensibility**
+
+- **Rich Set Algebra:** `|`, `&`, `-`, `^` ops (union, intersection, difference, symmetric difference).
+- **Slicing and Indexing:** Supports all Pythonic sequence semantics, including negative and slice indexing.
+- **Compatibility Checking:** `.compatible(other)` method ensures two sets are structurally equivalent before combining/operating.
+- **Signature Inspection:** `.signature` provides a Python-type-based schema, invaluable for API contracts, docs, and dynamic validation.
+- **Freeze/Restore API:** PureSet can be losslessly frozen to a hashable representation, and restored—even across Python versions.
+- **Protocol for New Types:** Pluggable mechanism for custom freeze/restore for advanced user classes, numpy, pandas, and beyond.
+- **Mixes with UserString, Counter, ChainMap, deque, array.array, memoryview, and more (see full list in docs/tests).**
+
+---
+
+## **Performance and Scalability**
+
+- **Highly optimized** for large scale: construction, lookup, and set algebra achieve competitive performance even for sets of tens of millions of elements.
+- **Performance gap** to built-in set is logarithmically bounded (see docs for latest benchmarks).
+- PureSet’s internal caching and O(1) hash-based fast paths guarantee speed for all practical workloads.
 
 ---
 
 ## **Testing**
 
+##### v1.1.250706.0: 56 tests; 0 Failures; 0 Errors
+
+The current testing suite is only available through the GitHub repository.
+
+You can check its code [here](https://github.com/gabrielmsilva00/pureset/blob/main/tests/unittest_pureset.py).
+
+- Full test suite includes:
+  - Edge cases for numpy, pandas, UserDict/UserList/UserString, Counter, deque, ChainMap
+  - Deeply nested and empty structures, custom and standard containers
+  - Type and schema enforcement for real-world mixed and homogeneous datasets
+  - Serialization and "restoration" safety
+
 ---
 
 ## **License**
+
 This project is released under the **Apache License 2.0**. Please review the [LICENSE](LICENSE) file for further details.
 
 ---
 
-PureSet is engineered to give your Python data code the safety, transparency, and power required for production-scale scenarios—across API, analytics, ML, and system development!
+> **PureSet is engineered to give your Python code safety, consistency, integrity and high power for production-scale scenarios across APIs, analytics, ML, and beyond!**
