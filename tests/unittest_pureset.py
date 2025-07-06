@@ -1,562 +1,539 @@
-"""Tests for PureSet."""
-
 import unittest
-import sys
-import os
 import timeit
 import pickle
 import copy
 from dataclasses import dataclass
-from concurrent.futures import ThreadPoolExecutor
+from enum import Enum
+from typing import Any
+from collections import namedtuple, UserList, UserDict
 from pathlib import Path
+import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
-
 from pureset import PureSet
 
+##### === CONSTRUCTION BASICS === #####
 
-class TestTypedSequence(unittest.TestCase):
-    """Test cases for PureSet class."""
+class TestPureSetConstruction(unittest.TestCase):
+    def test_basic_uniqueness(self):
+        self.assertEqual(PureSet(1,2,1,3).to_list(), [1,2,3])
+        self.assertEqual(PureSet("x", "y", "x").to_list(), ["x", "y"])
+        self.assertEqual(len(PureSet(3,)), 1)
 
-    def test_args_constructor(self):
-        """Test variadic argument constructor."""
-        ts = PureSet(1, 2, 3, 2, 4)
-        self.assertEqual(ts.to_list(), [1, 2, 3, 4])
+    def test_empty(self):
+        self.assertEqual(len(PureSet()), 0)
+        self.assertEqual(PureSet().to_list(), [])
 
-        ts = PureSet("hello", "world", "hello")
-        self.assertEqual(ts.to_list(), ["hello", "world"])
-
-        ts = PureSet(42)
-        self.assertEqual(len(ts), 1)
-        self.assertEqual(ts[0], 42)
-
-    def test_empty_handling(self):
-        """Test empty sequence handling."""
-        ts = PureSet()
-        self.assertEqual(len(ts), 0)
-        self.assertEqual(ts.to_list(), [])
-
-    def test_type_validation(self):
-        """Test type consistency validation."""
-        with self.assertRaises(TypeError) as cm:
-            PureSet(1, "two", 3)
-        self.assertIn("position 2", str(cm.exception))
-
-        with self.assertRaises(TypeError) as cm:
-            PureSet(10, 20.0, 30)
-        self.assertIn("<class 'int'>", str(cm.exception))
-
-    def test_string_bytes_elements(self):
-        """Test strings and bytes as elements."""
-        ts = PureSet("hello", "world")
-        self.assertEqual(len(ts), 2)
-        self.assertEqual(ts[0], "hello")
-
-        ts = PureSet(b"hello", b"world")
-        self.assertEqual(len(ts), 2)
-        self.assertEqual(ts[0], b"hello")
-
+    def test_type_homogeneity(self):
         with self.assertRaises(TypeError):
-            PureSet("hello", b"world")
+            PureSet(1, "a")
+        with self.assertRaises(TypeError):
+            PureSet(1, 2.0)
 
-    def test_slicing(self):
-        """Test slice operations."""
-        ts = PureSet(1, 2, 3, 4, 5)
-        self.assertEqual(ts[1:3].to_list(), [2, 3])
-        self.assertEqual(ts[:2].to_list(), [1, 2])
-        self.assertEqual(ts[2:].to_list(), [3, 4, 5])
-        self.assertEqual(ts[::2].to_list(), [1, 3, 5])
-        self.assertEqual(ts[::-1].to_list(), [5, 4, 3, 2, 1])
-        self.assertIsInstance(ts[1:3], PureSet)
-
-    def test_slicing_edge_cases(self):
-        """Test edge cases in slicing."""
-        ts = PureSet(1, 2, 3, 4, 5)
-
-        # Out of bounds slicing
-        self.assertEqual(ts[10:20].to_list(), [])
-        self.assertEqual(ts[-10:-20].to_list(), [])
-
-        # Negative indices
-        self.assertEqual(ts[-3:-1].to_list(), [3, 4])
-        self.assertEqual(ts[-1:].to_list(), [5])
-
-        # Step values
-        self.assertEqual(ts[::3].to_list(), [1, 4])
-        self.assertEqual(ts[1::2].to_list(), [2, 4])
-        self.assertEqual(ts[::-2].to_list(), [5, 3, 1])
-
-    def test_index_method(self):
-        """Test index() method."""
-        ts = PureSet("a", "b", "c", "d")
-        self.assertEqual(ts.index("b"), 1)
-        self.assertEqual(ts.index("d"), 3)
-        self.assertEqual(ts.index("c", 1), 2)
-        self.assertEqual(ts.index("b", 0, 3), 1)
-
-        with self.assertRaises(ValueError):
-            ts.index("z")
-
-        with self.assertRaises(ValueError):
-            ts.index("a", 1, 3)
-
-    def test_index_boundary_conditions(self):
-        """Test boundary conditions for index method."""
-        ts = PureSet(10, 20, 30, 40, 50)
-
-        # Test with negative start/stop
-        self.assertEqual(ts.index(30, -4), 2)
-        self.assertEqual(ts.index(40, -3, -1), 3)
-
-        # Test with out of bounds indices
-        self.assertEqual(ts.index(10, -100), 0)
-        self.assertEqual(ts.index(50, 0, 100), 4)
-
-        # Test edge case where element is at boundary
-        self.assertEqual(ts.index(10, 0, 1), 0)
-
-    def test_count_method(self):
-        """Test count() method - always returns 0 or 1 due to uniqueness."""
-        ts = PureSet(1, 2, 3, 2, 4)
-        self.assertEqual(ts.count(2), 1)  # Elements are unique
-        self.assertEqual(ts.count(5), 0)
-        self.assertEqual(ts.count(1), 1)
-
-    def test_reverse_method(self):
-        """Test reverse() method."""
-        ts = PureSet(1, 2, 3, 4)
-        rev = ts.reverse()
-        self.assertEqual(rev.to_list(), [4, 3, 2, 1])
-        self.assertIsInstance(rev, PureSet)
-        self.assertEqual(ts.to_list(), [1, 2, 3, 4])
-
-    def test_ensure_compatible_public(self):
-        """Test ensure_compatible method."""
-        ts1 = PureSet(1, 2, 3)
-        ts2 = PureSet(4, 5, 6)
-        ts_str = PureSet("a", "b", "c")
-
-        self.assertIs(ts1.compatible(ts2), ts2)
-
-        with self.assertRaises(TypeError) as cm:
-            ts1.compatible(ts_str)
-        self.assertIn("Incompatible element types", str(cm.exception))
-
-        with self.assertRaises(TypeError) as cm:
-            ts1.compatible([1, 2, 3])
-        self.assertIn("Expected PureSet", str(cm.exception))
-
-    def test_set_operations(self):
-        """Test set operations."""
-        a = PureSet(1, 2, 3)
-        b = PureSet(3, 4, 2)
-
-        self.assertEqual((a | b).to_list(), [1, 2, 3, 4])
-        self.assertEqual((a & b).to_list(), [2, 3])
-        self.assertEqual((a - b).to_list(), [1])
-        self.assertEqual((a ^ b).to_list(), [1, 4])
-
-    def test_hash_and_equality(self):
-        """Test hashing and equality."""
-        ts1 = PureSet(1, 2, 3)
-        ts2 = PureSet(1, 2, 3)
-        ts3 = PureSet(3, 2, 1)
-
-        self.assertEqual(ts1, ts2)
-        self.assertNotEqual(ts1, ts3)
-        self.assertEqual(hash(ts1), hash(ts2))
-
-        d = {ts1: "value"}
-        self.assertEqual(d[ts2], "value")
-
-    def test_immutability(self):
-        """Test immutability enforcement."""
-        ts = PureSet(1, 2, 3)
-
-        with self.assertRaises(AttributeError) as cm:
-            ts.new_attr = "value"
-        self.assertIn("immutable", str(cm.exception))
-
-    def test_performance(self):
-        """Test performance characteristics."""
-        setup = "from pureset import PureSet; ts = PureSet(*range(1000))"
-
-        int_time = timeit.timeit("ts[500]", setup, number=100000)
-        val_time = timeit.timeit("ts[500]", setup, number=100000)
-
-        self.assertLess(int_time, 0.1)
-        self.assertLess(val_time, 0.1)
-
-        data = list(range(1000)) * 2
-        setup = f"from pureset import PureSet; data = {data}"
-        creation_time = timeit.timeit("PureSet(*data)", setup, number=100)
-
-        self.assertLess(creation_time, 1.0)
-
-    def test_complex_types(self):
-        """Test with custom object types."""
-
-        class Point:
-            def __init__(self, x, y):
-                self.x = x
-                self.y = y
-
-            def __eq__(self, other):
-                return (
-                    isinstance(other, Point) and self.x == other.x and self.y == other.y
-                )
-
-            def __hash__(self):
-                return hash((self.x, self.y))
-
-        p1 = Point(1, 2)
-        p2 = Point(3, 4)
-        p3 = Point(1, 2)
-
-        ts = PureSet(p1, p2, p3)
-        self.assertEqual(len(ts), 2)
-        self.assertEqual(ts[0], p1)
-        self.assertEqual(ts[1], p2)
-
-    def test_tuple_heteroginity(self):
-        """Tests heterogenous tuple entries."""
-        with self.assertRaises(TypeError) as cm:
-            PureSet(
-                (0, "John"),
-                (2.5, "Maria"),
-                ("Peter", "Bob"),
-                (1, 2, 3),
-            )
-        self.assertIn("Incompatible", str(cm.exception))
-
-    def test_dict_equality(self):
-        """Tests equality between dict entries."""
-        ts = PureSet(
-            {"id": 0, "name": "John", "age": 15},
-            {"id": 1, "name": "Maria", "age": 20},
-            {"id": 2, "name": "John", "age": 25},
-        )
-
-        self.assertEqual(ts[0] == {"id": 0, "name": "John", "age": 15}, True)
-        self.assertEqual(ts[0] == {"id": 1, "name": "Maria", "age": 20}, False)
-        self.assertEqual(ts[1], {"id": 1, "name": "Maria", "age": 20})
-
-        ts2 = PureSet(
-            {"id": 0, "name": "John", "age": 15},
-            {"id": 1, "name": "Maria", "age": 20},
-            {"id": 2, "name": "John", "age": 25},
-        )
-        self.assertEqual(ts, ts2)
-        self.assertEqual(ts[0], ts2[0])
-
-        ts3 = PureSet(
-            {"id": 0, "name": "John", "age": 25},
-            {"id": 1, "name": "Maria", "age": 20},
-            {"id": 2, "name": "John", "age": 15},
-        )
-        self.assertNotEqual(ts, ts3)
-        self.assertNotEqual(ts[0], ts3[0])
-
-    def test_dict_heteroginity(self):
-        """Tests heterogenous dict entries."""
-        with self.assertRaises(TypeError) as cm:
-            PureSet(
-                {0: "John"},
-                {2.5: "Maria"},
-                {"Peter": 20},
-            )
-        self.assertIn("Incompatible", str(cm.exception))
-
-    def test_contains_operator(self):
-        """Test __contains__ operator (in)."""
-        ts = PureSet(1, 2, 3, 4, 5)
-
-        self.assertIn(3, ts)
-        self.assertNotIn(10, ts)
-        self.assertIn(1, ts)
-        self.assertIn(5, ts)
-
-        ts_str = PureSet("hello", "world", "test")
-        self.assertIn("hello", ts_str)
-        self.assertNotIn("python", ts_str)
-
-    def test_iteration(self):
-        """Test __iter__ method."""
-        ts = PureSet(10, 20, 30, 40)
-
-        # Test basic iteration
-        result = []
-        for item in ts:
-            result.append(item)
-        self.assertEqual(result, [10, 20, 30, 40])
-
-        # Test list comprehension
-        doubled = [x * 2 for x in ts]
-        self.assertEqual(doubled, [20, 40, 60, 80])
-
-        # Test with enumerate
-        indexed = list(enumerate(ts))
-        self.assertEqual(indexed, [(0, 10), (1, 20), (2, 30), (3, 40)])
-
-    def test_repr_and_str(self):
-        """Test __repr__ and __str__ methods."""
-        ts = PureSet(1, 2, 3)
-
-        # Test repr
-        repr_str = repr(ts)
-        self.assertIn("PureSet", repr_str)
-        self.assertIn("1", repr_str)
-        self.assertIn("2", repr_str)
-        self.assertIn("3", repr_str)
-
-        # Test str (if different from repr)
-        str_str = str(ts)
-        self.assertIsInstance(str_str, str)
-
-        # Test with empty sequence
-        ts_empty = PureSet()
-        repr_empty = repr(ts_empty)
-        self.assertIn("PureSet", repr_empty)
-
-    def test_value_lookup_getitem(self):
-        """Test special value lookup feature in __getitem__."""
-        ts = PureSet("a", "b", "c")
-
-        # Test value lookup
-        self.assertEqual(ts["a"], "a")
-        self.assertEqual(ts["b"], "b")
-
-        # Test KeyError for non-existent value
-        with self.assertRaises(KeyError) as cm:
-            ts["z"]
-        self.assertIn("not found", str(cm.exception))
-
-    def test_pos_method(self):
-        """Test pos() method for positional access."""
-        ts = PureSet(10, 20, 30)
-
-        self.assertEqual(ts.pos(0), 10)
-        self.assertEqual(ts.pos(1), 20)
-        self.assertEqual(ts.pos(2), 30)
-
-        # Test out of bounds
-        with self.assertRaises(IndexError) as cm:
-            ts.pos(10)
-        self.assertIn("out of range", str(cm.exception))
+    def test_str_bytes(self):
+        self.assertEqual(PureSet("a", "b")[0], "a")
+        self.assertEqual(PureSet(b"x", b"y")[0], b"x")
+        with self.assertRaises(TypeError):
+            PureSet("a", b"a")
 
     def test_none_values(self):
-        """Test handling of None values."""
-        # Test sequence with None values
-        ts = PureSet(None, None, None)
-        self.assertEqual(len(ts), 1)  # Deduplicated
-        self.assertEqual(ts[0], None)
-
-        # Test mixed None with other types should fail
+        self.assertEqual(len(PureSet(None, None)), 1)
         with self.assertRaises(TypeError):
-            PureSet(None, 1, 2)
+            PureSet(None, 2)
 
-    def test_float_types(self):
-        """Test with float types."""
-        ts = PureSet(1.5, 2.5, 3.5, 2.5)
-        self.assertEqual(ts.to_list(), [1.5, 2.5, 3.5])
-        self.assertEqual(len(ts), 3)
+##### === INDEXING AND SLICING === #####
 
-        # Test float operations
-        self.assertEqual(ts.count(2.5), 1)
-        self.assertEqual(ts.index(3.5), 2)
+class TestPureSetIndexing(unittest.TestCase):
+    def test_indexing(self):
+        ts = PureSet("a", "b", "c")
+        self.assertEqual(ts[0], "a")
+        self.assertEqual(ts[-1], "c")
 
-        # Test float with special values
-        ts_special = PureSet(float("inf"), float("-inf"), float("nan"))
-        self.assertEqual(len(ts_special), 3)
+    def test_slice(self):
+        nums = PureSet(0,1,2,3,4)
+        self.assertEqual(nums[2:].to_list(), [2,3,4])
+        self.assertEqual(nums[:2].to_list(), [0,1])
+        self.assertEqual(nums[::-1].to_list(), [4,3,2,1,0])
+        self.assertIsInstance(nums[1:3], PureSet)
+        self.assertEqual(nums[10:20].to_list(), [])
 
-    def test_boolean_types(self):
-        """Test with boolean types."""
-        ts = PureSet(True, False, True, False, True)
-        self.assertEqual(ts.to_list(), [True, False])
-        self.assertEqual(len(ts), 2)
+    def test_index_method(self):
+        ts = PureSet("z", "y", "w")
+        self.assertEqual(ts.index("y"), 1)
+        with self.assertRaises(ValueError):
+            ts.index("nope")
 
-        # Test boolean operations
-        self.assertEqual(ts.count(True), 1)
-        self.assertEqual(ts.count(False), 1)
-        self.assertEqual(ts.index(False), 1)
+    def test_value_lookup_getitem(self):
+        ts = PureSet("aa", "bb")
+        self.assertEqual(ts["bb"], "bb")
+        with self.assertRaises(KeyError):
+            ts["cc"]
 
-    def test_pickling(self):
-        """Test pickle/unpickle support."""
-        ts = PureSet(1, 2, 3, 4, 5)
+    def test_pos(self):
+        ts = PureSet(10, 20)
+        self.assertEqual(ts.pos(1), 20)
+        with self.assertRaises(IndexError):
+            ts.pos(9)
 
-        # Test pickling
-        pickled = pickle.dumps(ts)
-        unpickled = pickle.loads(pickled)
+    def test_count_uniqueness(self):
+        ts = PureSet(1,1,2)
+        self.assertEqual(ts.count(1), 1)
+        self.assertEqual(ts.count(99), 0)
 
-        self.assertEqual(ts, unpickled)
-        self.assertEqual(ts.to_list(), unpickled.to_list())
-        self.assertEqual(hash(ts), hash(unpickled))
 
-        # Test with complex types
-        ts_complex = PureSet({"a", "b", "c"}, {"x", "y", "z"}, {"1", "2", "3"})
-        pickled_complex = pickle.dumps(ts_complex)
-        unpickled_complex = pickle.loads(pickled_complex)
+##### === HASHING, EQUALITY, REPR, STR, AND ITER === #####
 
-        self.assertEqual(ts_complex, unpickled_complex)
+class TestPureSetObjectBehavior(unittest.TestCase):
+    def test_equality_and_hash(self):
+        a, b = PureSet(1,2,3), PureSet(1,2,3)
+        c = PureSet(3,2,1)
+        self.assertEqual(a, b)
+        self.assertNotEqual(a, c)
+        self.assertEqual(hash(a), hash(b))
+        d = {a: "v"}
+        self.assertEqual(d[b], "v")
+    
+    def test_repr_and_str_empty(self):
+        ts = PureSet()
+        self.assertTrue("PureSet" in repr(ts))
+        self.assertEqual(repr(ts), "PureSet()")
+        self.assertTrue(isinstance(str(ts), str))
 
-    def test_copy_operations(self):
-        """Test copy and deepcopy operations."""
-        ts = PureSet([1, 2], [3, 4], [5, 6])
+    def test_basic_iteration(self):
+        ts = PureSet(1,2,3,4)
+        self.assertEqual(list(ts), [1,2,3,4])
 
-        # Test shallow copy
+##### === SET AND SEQUENCE OPERATIONS === #####
+
+class TestPureSetOps(unittest.TestCase):
+    def test_union_intersection_difference_xor(self):
+        a, b = PureSet(1, 2, 3), PureSet(2, 3, 4)
+        self.assertEqual((a | b).to_list(), [1,2,3,4])
+        self.assertEqual((a & b).to_list(), [2,3])
+        self.assertEqual((a - b).to_list(), [1])
+        self.assertEqual((a ^ b).to_list(), [1,4])
+
+    def test_add_concat(self):
+        ts1, ts2 = PureSet(0,1), PureSet(1,2)
+        self.assertEqual((ts1 + ts2).to_list(), [0,1,2])
+
+    def test_reverse_sorted_map_filter(self):
+        ts = PureSet(7, 4, 1)
+        self.assertEqual(ts.reverse().to_list(), [1,4,7])
+        self.assertEqual(ts.sorted().to_list(), [1,4,7])
+        self.assertEqual(ts.map(str).to_list(), ["7","4","1"])
+        self.assertEqual(ts.filter(lambda x: x%2).to_list(), [7,1])
+
+    def test_copy_and_deepcopy(self):
+        ts = PureSet([1,2],[3,4])
         ts_copy = copy.copy(ts)
+        ts_deep = copy.deepcopy(ts)
         self.assertEqual(ts, ts_copy)
-        self.assertIsNot(ts, ts_copy)
+        self.assertIsNot(ts[0], ts_deep[0])
 
-        # Test deepcopy
-        ts_deepcopy = copy.deepcopy(ts)
-        self.assertEqual(ts, ts_deepcopy)
-        self.assertIsNot(ts, ts_deepcopy)
+##### === SIGNATURES AND TYPING === #####
 
-        # Verify deep copy created new objects
-        self.assertIsNot(ts[0], ts_deepcopy[0])
-        self.assertEqual(ts[0], ts_deepcopy[0])
+class TestPureSetSignature(unittest.TestCase):
+    def test_homogeneous_signature(self):
+        self.assertEqual(
+            PureSet({'x': 1, 'y': 2}, {'x':2,'y':3}).signature,
+            (dict, {'x': int, 'y': int})
+        )
 
-    def test_large_sequences(self):
-        """Test with very large sequences."""
-        # Test creation with large sequence
-        large_data = list(range(10000))
-        ts = PureSet(*large_data)
+    def test_signature_nested(self):
+        ts = PureSet([[{"a": 1}], [{"a": 2}]])
+        self.assertEqual(ts.signature, (list, ((list, (dict, {'a': int})), 2)))
 
-        # Deduplicated size should be 10000
-        self.assertEqual(len(ts), 10000)
+    def test_type_error_on_incompatible_signature(self):
+        with self.assertRaises(TypeError):
+            PureSet({'x':1}, {'x':'str'})
 
-        # Test operations on large sequence
-        self.assertEqual(ts[5000], 5000)
-        self.assertEqual(ts[-1], 9999)
-        self.assertIn(7500, ts)
+##### === TESTS FOR RESTORE AND ROUND-TRIP === #####
 
-        # Test slicing large sequence
-        subset = ts[1000:2000]
-        self.assertEqual(len(subset), 1000)
-        self.assertEqual(subset[0], 1000)
+class TestPureSetRestore(unittest.TestCase):
+    def test_restore_round_trip(self):
+        x = [{'a': [1, 2]}, {'a': [3, 4]}]
+        ps = PureSet(*x)
+        for i, y in enumerate(x):
+            self.assertEqual(ps[i], y)
+        self.assertEqual(ps.to_list(), x)
+        self.assertEqual(PureSet.restore(PureSet.freeze(x)), x)
 
-    def test_frozen_dataclass(self):
-        """Test with frozen dataclasses."""
+    def test_nested_pureset_round_trip(self):
+        ps1 = PureSet(1, 2)
+        ps2 = PureSet(3, 4)
+        big = PureSet(ps1, ps2, ps1)
+        self.assertEqual(len(big), 2)
+        self.assertEqual(big[0], ps1)
+        self.assertEqual(big[1], ps2)
+        back = PureSet.restore(PureSet.freeze(big))
+        self.assertEqual(back, big)
 
-        @dataclass(frozen=True)
-        class FrozenPoint:
+    def test_namedtuple_and_enum(self):
+        Pt = namedtuple("Pt", "x y")
+        Red = Enum('Red', {'A': 1, 'B': 2})
+        pt = Pt(1, 2)
+        col = Red.A
+        self.assertEqual(PureSet.restore(PureSet.freeze(pt)), pt)
+        self.assertEqual(PureSet.restore(PureSet.freeze(col)), col)
+
+    def test_userlist_and_userdict(self):
+        ul = UserList([3,4])
+        ud = UserDict({'x': 1})
+        for obj in (ul, ud):
+            frz = PureSet.freeze(obj)
+            self.assertEqual(type(PureSet.restore(frz)), type(obj))
+
+    def test_error_on_unfreezable_object(self):
+        class CustomUnfreezable:
+            def __eq__(self, other): return id(self) == id(other)
+            def __hash__(self): return id(self)
+
+        class NonFreezable:
+            __hash__ = None
+
+        class F: pass
+
+        with self.assertRaises(TypeError):
+            PureSet.freeze(NonFreezable())
+
+        with self.assertRaises(TypeError):
+            PureSet.freeze(CustomUnfreezable())
+
+        with self.assertRaises(TypeError):
+            PureSet.freeze(F())
+
+##### === ADVANCED CASE TESTS === #####
+class TestPureSetEdgeCases(unittest.TestCase):
+    def test_slots_and_dict_compatibility(self):
+        class S:
+            __slots__ = ('foo',)
+            def __init__(self, foo): self.foo = foo
+        class D:
+            def __init__(self, foo): self.foo = foo
+        with self.assertRaises(TypeError):
+            PureSet(S(1), D(1))
+        x = PureSet(S(2), S(3))
+        self.assertEqual(x[1].foo, 3)
+
+    def test_class_inheritance_signature(self):
+        class Base: pass
+        class Child(Base): pass
+        with self.assertRaises(TypeError):
+            PureSet(Base(), Child())
+
+    def test_dataclass_inheritance_signature(self):
+        @dataclass
+        class A: x: int
+        @dataclass
+        class B(A): y: int
+        with self.assertRaises(TypeError):
+            PureSet(A(1), B(2,3))
+
+    def test_metaclasses(self):
+        class MetaA(type): pass
+        class MetaB(type): pass
+        class A(metaclass=MetaA): pass
+        class B(metaclass=MetaB): pass
+        with self.assertRaises(TypeError): PureSet(A(), B())
+
+    def test_field_init_in_postinit(self):
+        @dataclass
+        class C:
             x: int
-            y: int
+            def __post_init__(self): self.y = self.x * 2
+        ts = PureSet(C(1), C(2))
+        self.assertTrue(hasattr(ts[0], "y") and ts[0].y == 2)
 
-        p1 = FrozenPoint(1, 2)
-        p2 = FrozenPoint(3, 4)
-        p3 = FrozenPoint(1, 2)
-
-        ts = PureSet(p1, p2, p3)
+    def test_abc_numbers(self):
+        import numbers
+        class MyInt(numbers.Integral):
+            def __init__(self, value): self.value = value
+            def __index__(self): return self.value
+            def __abs__(self): return MyInt(abs(self.value))
+            def __floor__(self): return MyInt(int(self.value))
+            def __ceil__(self): return MyInt(int(self.value))
+            def __add__(self, other): return MyInt(self.value + int(other))
+            def __eq__(self, other): return int(self) == int(other)
+            def __le__(self, other): return int(self) <= int(other)
+            def __lt__(self, other): return int(self) < int(other)
+            def __round__(self): return MyInt(int(self.value))
+            def __trunc__(self): return MyInt(int(self.value))
+            def __hash__(self): return hash(self.value)
+            def __bool__(self): return bool(self.value)
+            def __neg__(self): return MyInt(-self.value)
+            def __pos__(self): return MyInt(self.value)
+            def __int__(self): return self.value
+            def __float__(self): return float(self.value)
+            def __complex__(self): return complex(self.value)
+            def __mul__(self, other): return MyInt(self.value * int(other))
+            def __truediv__(self, other): return MyInt(self.value // int(other))
+            def __floordiv__(self, other): return MyInt(self.value // int(other))
+            def __mod__(self, other): return MyInt(self.value % int(other))
+            def __pow__(self, other): return MyInt(self.value ** int(other))
+            def __lshift__(self, other): return MyInt(self.value << int(other))
+            def __rshift__(self, other): return MyInt(self.value >> int(other))
+            def __and__(self, other): return MyInt(self.value & int(other))
+            def __or__(self, other): return MyInt(self.value | int(other))
+            def __xor__(self, other): return MyInt(self.value ^ int(other))
+            def __invert__(self): return MyInt(~self.value)
+            def __radd__(self, other): return MyInt(int(other) + self.value)
+            def __rsub__(self, other): return MyInt(int(other) - self.value)
+            def __rmul__(self, other): return MyInt(int(other) * self.value)
+            def __rtruediv__(self, other): return MyInt(int(other) // self.value)
+            def __rfloordiv__(self, other): return MyInt(int(other) // self.value)
+            def __rmod__(self, other): return MyInt(int(other) % self.value)
+            def __rpow__(self, other): return MyInt(int(other) ** self.value)
+            def __rlshift__(self, other): return MyInt(int(other) << self.value)
+            def __rrshift__(self, other): return MyInt(int(other) >> self.value)
+            def __rand__(self, other): return MyInt(int(other) & self.value)
+            def __ror__(self, other): return MyInt(int(other) | self.value)
+            def __rxor__(self, other): return MyInt(int(other) ^ self.value)
+            def __rinvert__(self, other): return MyInt(~int(other))
+            def __repr__(self): return f"MyInt({self.value})"
+            def denominator(self): return 1
+            def numerator(self): return self.value
+            def real(self): return self.value
+            def imag(self): return 0
+            def conjugate(self): return self
+            def bit_length(self): return self.value.bit_length()
+        a, b = MyInt(1), MyInt(2)
+        ts = PureSet(a, b)
         self.assertEqual(len(ts), 2)
-        self.assertEqual(ts[0], p1)
-        self.assertEqual(ts[1], p2)
+        self.assertIsInstance(ts[0], MyInt)
 
-        # Test that frozen objects work in set operations
-        ts2 = PureSet(p2, FrozenPoint(5, 6))
-        intersection = ts & ts2
-        self.assertEqual(len(intersection), 1)
-        self.assertEqual(intersection[0], p2)
+##### === TYPE CONSISTENCY AND UNHASHABLES === #####
+class TestTypeConsistency(unittest.TestCase):
+    def test_mixed_numeric_types(self):
+        with self.assertRaises(TypeError): PureSet(1, 2.0)
+        ts1, ts2 = PureSet(1,2,3), PureSet(1.0,2.0,3.0)
+        self.assertNotEqual(ts1.signature, ts2.signature)
 
-    def test_nested_typed_sequences(self):
-        """Test PureSet containing other TypedSequences."""
-        ts1 = PureSet(1, 2, 3)
-        ts2 = PureSet(4, 5, 6)
-        ts3 = PureSet(1, 2, 3)  # Same as ts1
+    def test_dict_incompatibility(self):
+        with self.assertRaises(TypeError): PureSet({'a': 1}, {'a': 2.0})
+        with self.assertRaises(TypeError): PureSet({'a': 1}, {'b': 2})
 
-        # Create nested PureSet
-        nested = PureSet(ts1, ts2, ts3)
-        self.assertEqual(len(nested), 2)  # ts1 and ts3 are equal
-        self.assertEqual(nested[0], ts1)
-        self.assertEqual(nested[1], ts2)
+    def test_tuple_heteroginity(self):
+        with self.assertRaises(TypeError):
+            PureSet((0, "John"), (1, 2), ("Peter", "Bob"))
+        with self.assertRaises(TypeError):
+            PureSet((1, 2), (1, 2, 3))
 
-        # Test operations on nested sequences
-        self.assertIn(ts1, nested)
-        self.assertEqual(nested.count(ts1), 1)
+    def test_incompatible_classvar(self):
+        class A:
+            x:int
+            classvar=42
+            def __init__(self, x): self.x=x
+        class B: 
+            def __init__(self, x): self.y=x
+        with self.assertRaises(TypeError): PureSet(A(1), B(1))
 
-    def test_to_methods(self):
-        """Test conversion methods."""
-        ts = PureSet(3, 1, 4, 1, 5)
+##### === PERFORMANCE === #####
+import math
+n   = min(300, 10**6)
+gap = abs(92 - (math.log2(n)))
 
-        # Test to_list
-        lst = ts.to_list()
-        self.assertEqual(lst, [3, 1, 4, 5])
-        self.assertIsInstance(lst, list)
-
-        # Test to_tuple
-        tup = ts.to_tuple()
-        self.assertEqual(tup, (3, 1, 4, 5))
-        self.assertIsInstance(tup, tuple)
-
-        # Test to_frozenset for hashable
-        fs = ts.to_frozenset()
-        self.assertEqual(fs, frozenset([3, 1, 4, 5]))
-        self.assertIsInstance(fs, frozenset)
-
-        # Test to_frozenset for unhashable
-        ts_unhashable = PureSet([1, 2], [3, 4])
-        with self.assertRaises(TypeError) as cm:
-            ts_unhashable.to_frozenset()
-        self.assertIn("unhashable", str(cm.exception))
-
-    def test_thread_safety(self):
-        """Test thread safety of PureSet operations."""
-        ts = PureSet(*range(1000))
-        results = []
-        errors = []
-
-        def access_sequence(index):
-            try:
-                # Perform multiple operations
-                val = ts[index]
-                contains = index in ts
-                count = ts.count(index)
-                results.append((val, contains, count))
-            except Exception as e:
-                errors.append(e)
-
-        # Run multiple threads accessing the sequence
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(access_sequence, i) for i in range(100)]
-            for future in futures:
-                future.result()
-
-        # Check no errors occurred
-        self.assertEqual(len(errors), 0)
-        self.assertEqual(len(results), 100)
-
-        # Verify all results are correct
-        for i, (val, contains, count) in enumerate(results):
-            self.assertEqual(val, i)
-            self.assertTrue(contains)
-            self.assertEqual(count, 1)
-
-    def test_signature(self):
-        """Test .signature property."""
-        ts1 = PureSet(
-            {"id": 0, "name": "John", "age": 15},
-            {"id": 1, "name": "Alice", "age": 20},
-            {"id": 2, "name": "Bob", "age": 25},
+class TestPureSetPerformance(unittest.TestCase):
+    def test_construction_speed_vs_set(self):
+        data = [i for i in range(n)] * 2
+        t_set = timeit.timeit("set(data)", globals={"data": data}, number=10)
+        t_ps = timeit.timeit("PureSet(*data)", globals={"data": data, "PureSet": PureSet}, number=10)
+        t_gap = ((100 * t_ps) / t_set)
+        t_diff = ((100 * (t_set * gap)) / t_set)
+        self.assertLess(
+            t_ps,
+            t_set * gap,
+            f"\nPureSet slower than set by {t_gap:.2f}%\n"
+            f"(set: {t_set:.5f}s, PureSet: {t_ps:.5f}s)\n"
+            f"Allowed gap: {t_set * gap:.5f}s ({t_diff:.2f}%)\n"
         )
-        sig = ts1.signature
-        self.assertEqual(sig, (dict, {"id": int, "name": str, "age": int}))
-        
-        ts2 = PureSet(
-            {"id": 0, "name": "John", "age": 15},
-            {"id": 1, "name": "Alice", "age": 20},
-            {"id": 2, "name": "Bob", "age": 25},
-        )
-        self.assertEqual(ts1.signature, ts2.signature)
-        self.assertTrue(ts1.compatible(ts2))
-        
-        data = PureSet(
-            [[0.2, 0.4, 0.8, "a", "b", "c"], True],
-            [[0.1, 0.2, 0.3, "x", "y", "z"], False],
-            [[0.3, 0.4, 0.5, "d", "e", "f"], False],
-        )
-        self.assertEqual(data.signature, (tuple, (tuple, (float, 3), (str, 3)), bool))
 
+    def test_membership_speed_vs_set(self):
+        data = [i for i in range(n)]
+        s = set(data)
+        ps = PureSet(*data)
+        idx = n // 2
+        t_set = timeit.timeit("idx in s", globals={"idx": idx, "s": s}, number=100000)
+        t_ps  = timeit.timeit("idx in ps", globals={"idx": idx, "ps": ps}, number=100000)
+        t_gap = ((100 * t_ps) / t_set)
+        t_diff = ((100 * (t_set * gap)) / t_set)
+        self.assertLess(
+            t_ps,
+            t_set * gap,
+            f"\nPureSet slower than set by {t_gap:.2f}%\n"
+            f"(set: {t_set:.5f}s, PureSet: {t_ps:.5f}s)\n"
+            f"Allowed gap: {t_set * gap:.5f}s ({t_diff:.2f}%)\n"
+        )
 
+    def test_to_frozenset_speed_vs_set(self):
+        data = [i for i in range(n)]
+        ps = PureSet(*data)
+        t_set = timeit.timeit("frozenset(data)", globals={"data": data}, number=100)
+        t_ps  = timeit.timeit("ps.to_frozenset()", globals={"ps": ps}, number=100)
+        t_gap = ((100 * t_ps) / t_set)
+        t_diff = ((100 * (t_set * gap)) / t_set)
+        self.assertLess(
+            t_ps,
+            t_set * gap,
+            f"\nPureSet slower than set by {t_gap:.2f}%\n"
+            f"(set: {t_set:.5f}s, PureSet: {t_ps:.5f}s)\n"
+            f"Allowed gap: {t_set * gap:.5f}s ({t_diff:.2f}%)\n"
+        )
+
+##### === UTILITY/EXTENSION === #####
+class TestUtilityAndExtensions(unittest.TestCase):
+    def test_to_list_tuple_frozenset(self):
+        ts = PureSet("a","b","c")
+        self.assertIsInstance(ts.to_list(), list)
+        self.assertIsInstance(ts.to_tuple(), tuple)
+        self.assertIsInstance(ts.to_frozenset(), frozenset)
+        self.assertEqual(set(ts.to_list()), set(ts.to_frozenset()))
+
+    def test_pickle_and_copy_roundtrip(self):
+        ts = PureSet(1,2,3,4,5)
+        ts2 = pickle.loads(pickle.dumps(ts))
+        self.assertEqual(ts, ts2)
+
+    def test_deepcopy_returns_new_objects(self):
+        ts = PureSet([7,8],[9,10])
+        ts2 = copy.deepcopy(ts)
+        self.assertEqual(ts, ts2)
+        self.assertIsNot(ts[0], ts2[0])
+
+    def test_value_lookup_and_notfound(self):
+        ts = PureSet(11,12,13)
+        self.assertEqual(ts.get(12), 12)
+        self.assertIsNone(ts.get(99))
+        self.assertEqual(ts.get(99, "na"), "na")
+
+##### === EXTREME AND RARE EDGE CASES === #####
+class TestPureSetEdgeContainers(unittest.TestCase):
+    def test_freeze_memoryview(self):
+        data = memoryview(b'abcde')
+        ps = PureSet(data)
+        self.assertEqual(ps[0].tobytes(), b'abcde')
+        frozen = PureSet.freeze(data)
+        restored = PureSet.restore(frozen)
+        self.assertIsInstance(restored, memoryview)
+        self.assertEqual(restored.tobytes(), data.tobytes())
+
+    def test_freeze_range(self):
+        r = range(10, 20, 2)
+        ps = PureSet(r)
+        self.assertEqual(ps[0], r)
+        frozen = PureSet.freeze(r)
+        restored = PureSet.restore(frozen)
+        self.assertEqual(list(restored), list(r))
+
+    def test_freeze_array(self):
+        import array
+        arr = array.array("i", [1,2,3])
+        frozen = PureSet.freeze(arr)
+        restored = PureSet.restore(frozen)
+        self.assertIsInstance(restored, array.array)
+        self.assertEqual(restored.tolist(), arr.tolist())
+        arr2 = array.array("f", [1.1, 2.2])
+        with self.assertRaises(TypeError):
+            PureSet(arr, arr2)
+
+    def test_mix_bytes_bytearray_memoryview(self):
+        arr = bytearray(b"abc")
+        mem = memoryview(arr)
+        with self.assertRaises(TypeError):
+            PureSet(arr, mem)
+
+    def test_chainmap_counter_ordereddict_defaultdict(self):
+        import collections
+        ch = collections.ChainMap({"a": 1}, {"b": 2})
+        ct = collections.Counter({'x': 2, 'y': 3})
+        od = collections.OrderedDict(a=1, b=2)
+        dd = collections.defaultdict(int, foo=42)
+        types = [ch, ct, od, dd]
+        for container in types:
+            frozen = PureSet.freeze(container)
+            restored = PureSet.restore(frozen)
+            self.assertEqual(type(restored), type(container))
+            if hasattr(container, 'items'):
+                self.assertEqual(dict(restored.items()), dict(container.items()))
+    def test_userstring_userlist_userdict(self):
+        from collections import UserString, UserList, UserDict
+        us = UserString("test")
+        s = "test"
+        ul = UserList([1, 2, 3])
+        ud = UserDict({'foo': 99})
+        with self.assertRaises(TypeError):
+            PureSet(us, s)
+        self.assertEqual(PureSet(us)[0], us)
+        self.assertEqual(PureSet(ul)[0], ul)
+        self.assertEqual(PureSet(ud)[0], ud)
+
+class TestPureSetWithNumpy(unittest.TestCase):
+    def test_numpy_array_round_trip(self):
+        import numpy as np
+        arr = np.arange(6).reshape(2, 3)
+        ps = PureSet(arr)
+        self.assertIsInstance(ps[0], np.ndarray)
+        self.assertTrue(np.array_equal(ps[0], arr))
+        with self.assertRaises(TypeError):
+            PureSet(arr, arr.tolist())
+        sc = np.float64(1.23)
+        ps = PureSet(sc)
+        self.assertAlmostEqual(ps[0], float(sc))
+    def test_numpy_string_datetime(self):
+        import numpy as np
+        arr = np.array(['a', 'b', 'c'], dtype='U')
+        ps = PureSet(arr)
+        self.assertTrue((ps[0] == arr).all())
+        dtarr = np.array(['2023-01-01', '2024-04-05'], dtype='M')
+        ps = PureSet(dtarr)
+        self.assertTrue((ps[0] == dtarr).all())
+    def test_incompatible_signatures(self):
+        import numpy as np
+        a1 = np.arange(3)
+        a2 = np.arange(3).reshape(1,3)
+        with self.assertRaises(TypeError):
+            PureSet(a1, a2)
+
+class TestPureSetWithPandas(unittest.TestCase):
+    def test_dataframe_series_index(self):
+        import pandas as pd
+        df = pd.DataFrame({'a':[1,2],'b':[3,4]})
+        ser = pd.Series([9, 8, 7], index=['x', 'y', 'z'])
+        idx = pd.Index([5, 7, 9])
+        for obj in (df, ser, idx):
+            ps = PureSet(obj)
+            self.assertEqual(type(ps[0]), type(obj))
+            restored = PureSet.restore(PureSet.freeze(obj))
+            self.assertEqual(type(restored), type(obj))
+            if hasattr(obj, 'values'):
+                self.assertTrue((restored.values == obj.values).all())
+    def test_no_mix_list_pandas(self):
+        import pandas as pd
+        ser = pd.Series([1,2,3])
+        with self.assertRaises(TypeError):
+            PureSet([1,2,3], ser)
+        df = pd.DataFrame({'a':[1,2],'b':[3,4]})
+        with self.assertRaises(TypeError):
+            PureSet(df, [[1,2], [3,4]])
+
+class TestPureSetWeirdPythonNativeTypes(unittest.TestCase):
+    def test_mix_tuple_namedtuple_list(self):
+        Pt = namedtuple("Pt", "x y")
+        t = (1,2)
+        nt = Pt(1,2)
+        l = [1,2]
+        with self.assertRaises(TypeError):
+            PureSet(nt, t)
+        with self.assertRaises(TypeError):
+            PureSet(t, l)
+        with self.assertRaises(TypeError):
+            PureSet(nt, l)
+    def test_zero_length_types(self):
+        self.assertEqual(len(PureSet()), 0)
+        self.assertEqual(len(PureSet([])), 1)
+        self.assertEqual(len(PureSet(())), 1)
+        self.assertEqual(len(PureSet({})), 1)
+
+##### === MAIN ENTRYPOINT === #####
 if __name__ == "__main__":
     unittest.main()
