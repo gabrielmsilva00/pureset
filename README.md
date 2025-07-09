@@ -170,13 +170,6 @@ True
 
 ---
 
-## **Performance and Scalability**
-
-- Highly optimized for construction, lookup, set/mapping algebra.
-- PureSet and PureMap scale efficiently for large practical workloads.
-
----
-
 ## **Testing**
 
 > ###### v1.2.250706.0: 88 tests; 0 Failures; 0 Errors; OK.
