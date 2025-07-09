@@ -1,4 +1,474 @@
+"""
+test_pureset.py
+===============
+
+This is the official test suite for the pureset.py module.
+
+doctest
+=======
+>>> from pureset import *
+>>> PureSet(1, 2, 3)
+PureSet(1, 2, 3)
+>>> PureMap(a=1, b=2)
+PureMap('a': 1, 'b': 2)
+
+>>> PureSet(1, 2, 3)
+PureSet(1, 2, 3)
+>>> PureSet([1, 2], [3, 4])
+PureSet([1, 2], [3, 4])
+>>> PureSet()
+PureSet()
+>>> PureSet(1, 2, 2, 3)
+PureSet(1, 2, 3)
+>>> PureSet(1, 'a')
+Traceback (most recent call last):
+    ...
+TypeError: Incompatible element type or shape at position 2:
+Exp: <class 'int'>;
+Got: <class 'str'>
+
+>>> PureSet(1, 2, 3)
+PureSet(1, 2, 3)
+>>> PureSet([1, 2], [3, 4])
+PureSet([1, 2], [3, 4])
+>>> PureSet(1, 1, 2, 2, 3, 3)
+PureSet(1, 2, 3)
+>>> PureSet()
+PureSet()
+>>> PureSet(1, "a")
+Traceback (most recent call last):
+    ...
+TypeError: Incompatible element type or shape at position 2:
+Exp: <class 'int'>;
+Got: <class 'str'>
+
+>>> PureSet(1, 2, 3).signature
+<class 'int'>
+>>> PureSet({"x": 1, "y": 2}, {"x": 0, "y": 5}).signature
+(<class 'dict'>, {'x': <class 'int'>, 'y': <class 'int'>})
+>>> class C: pass
+>>> PureSet(C(), C()).signature
+Traceback (most recent call last):
+    ...
+TypeError: Cannot safely freeze object of type <class '__main__.C'> for PureSet.
+
+>>> import pickle
+>>> ps = PureSet(1, 2, 3)
+>>> ps2 = pickle.loads(pickle.dumps(ps))
+>>> ps == ps2
+True
+>>> empty = PureSet()
+>>> empty2 = pickle.loads(pickle.dumps(empty))
+>>> empty == empty2
+True
+
+>>> from copy import copy
+>>> ps = PureSet(1, 2, 3)
+>>> ps_copy = copy(ps)
+>>> ps == ps_copy
+True
+>>> ps is ps_copy
+False
+
+>>> from copy import deepcopy
+>>> ps = PureSet([1, 2], [3, 4])
+>>> ps_deep = deepcopy(ps)
+>>> ps == ps_deep
+True
+>>> ps[0] is ps_deep[0]
+False
+
+>>> ps = PureSet(1, 2, 3, 2, 1)
+>>> len(ps)
+3
+>>> len(PureSet())
+0
+
+>>> ps = PureSet(3, 1, 4, 1, 5)
+>>> list(ps)
+[3, 1, 4, 5]
+>>> for x in PureSet(1, 2, 3):
+...     print(x)
+1
+2
+3
+
+>>> ps = PureSet(1, 2, 3)
+>>> isinstance(hash(ps), int)
+True
+>>> ps1 = PureSet(1, 2, 3)
+>>> ps2 = PureSet(1, 2, 3)
+>>> hash(ps1) == hash(ps2)
+True
+
+>>> PureSet(1, 2, 3)
+PureSet(1, 2, 3)
+>>> PureSet()
+PureSet()
+
+>>> print(PureSet(1, 2, 3))
+PureSet(1, 2, 3)
+>>> print(PureSet(*range(15)))
+PureSet(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, ... (5 more items))
+
+>>> ps = PureSet(1, 2, 3, 4, 5)
+>>> 3 in ps
+True
+>>> 10 in ps
+False
+>>> ps = PureSet([1, 2], [3, 4])
+>>> [1, 2] in ps
+True
+
+>>> PureSet(1, 2, 3) == PureSet(1, 2, 3)
+True
+>>> PureSet(1, 2, 3) == PureSet(3, 2, 1)
+False
+>>> PureSet(1, 2) == [1, 2]
+False
+
+>>> PureSet(1, 2) < PureSet(1, 3)
+True
+>>> PureSet(1, 2, 3) < PureSet(1, 2)
+False
+
+>>> PureSet(1, 2) <= PureSet(1, 2)
+True
+>>> PureSet(20) <= PureSet(3, 6, 9)
+False
+
+>>> PureSet(1, 2) > PureSet(1, 3)
+False
+>>> PureSet(1, 2, 3) > PureSet(1, 2)
+True
+
+>>> PureSet(15) >= PureSet(1, 2, 3, 4, 5)
+True
+>>> PureSet(-30) >= PureSet(-1, 0, 1)
+False
+
+>>> PureSet(1, 2) + PureSet(3, 4)
+PureSet(1, 2, 3, 4)
+>>> PureSet(1, 2) + PureSet(2, 3)
+PureSet(1, 2, 3)
+>>> PureSet() + PureSet(1, 2)
+PureSet(1, 2)
+
+>>> PureSet(1, 2) * 3
+PureSet(1, 2)
+>>> PureSet(1, 2) * 0
+PureSet()
+>>> PureSet(1, 2) * -1
+PureSet()
+
+>>> ps = PureSet(10, 20, 30)
+>>> ps.pos(0)
+10
+>>> ps.pos(-1)
+30
+>>> ps.pos(10)
+Traceback (most recent call last):
+    ...
+IndexError: tuple index out of range
+
+>>> ps = PureSet(10, 20, 30, 40)
+>>> ps.index(20)
+1
+>>> ps.index(30, 1)
+2
+>>> ps.index(10, 1, 3)
+Traceback (most recent call last):
+    ...
+ValueError: tuple.index(x): x not in tuple
+
+>>> ps = PureSet(1, 2, 3)
+>>> ps.count(2)
+1
+>>> ps.count(5)
+0
+
+>>> ps = PureSet(1, 2, 3)
+>>> ps.join(",")
+'1,2,3'
+
+>>> ps = PureSet(1, 2, 3, 4)
+>>> ps.reverse()
+PureSet(4, 3, 2, 1)
+>>> PureSet().reverse()
+PureSet()
+
+>>> ps = PureSet(1, 2, 3)
+>>> ps.to_list()
+[1, 2, 3]
+>>> type(ps.to_list())
+<class 'list'>
+
+>>> ps = PureSet(1, 2, 3)
+>>> ps.to_tuple()
+(1, 2, 3)
+>>> type(ps.to_tuple())
+<class 'tuple'>
+
+>>> ps = PureSet(1, 2, 3)
+>>> ps.to_frozenset()
+frozenset({1, 2, 3})
+>>> ps = PureSet([1, 2], [3, 4])
+>>> ps.to_frozenset()
+Traceback (most recent call last):
+    ...
+TypeError: unhashable type: 'list'
+
+>>> ps1 = PureSet(1, 2, 3)
+>>> ps2 = PureSet(4, 5, 6)
+>>> ps1.compatible(ps2) == ps2
+True
+>>> ps_str = PureSet("a", "b")
+>>> ps1.compatible(ps_str)
+Traceback (most recent call last):
+    ...
+TypeError: Incompatible element types:
+Exp: <class 'int'>
+Got: <class 'str'>
+
+>>> PureSet(1, 2, 3) | PureSet(3, 4, 5)
+PureSet(1, 2, 3, 4, 5)
+>>> PureSet() | PureSet(1, 2)
+PureSet(1, 2)
+>>> PureSet([1, 2], [3, 4]) | PureSet([3, 4], [5, 6])
+PureSet([1, 2], [3, 4], [5, 6])
+
+>>> PureSet(1, 2, 3, 4) & PureSet(3, 4, 5, 6)
+PureSet(3, 4)
+>>> PureSet(1, 2) & PureSet(3, 4)
+PureSet()
+>>> PureSet([1, 2], [3, 4]) & PureSet([3, 4], [5, 6])
+PureSet([3, 4])
+
+>>> PureSet(1, 2, 3, 4) - PureSet(3, 4, 5)
+PureSet(1, 2)
+>>> PureSet(1, 2) - PureSet(1, 2, 3)
+PureSet()
+>>> PureSet([1, 2], [3, 4]) - PureSet([3, 4])
+PureSet([1, 2])
+
+>>> PureSet(1, 2, 3) ^ PureSet(3, 4, 5)
+PureSet(1, 2, 4, 5)
+>>> PureSet(1, 2) ^ PureSet(3, 4)
+PureSet(1, 2, 3, 4)
+>>> PureSet(1, 2) ^ PureSet(1, 2)
+PureSet()
+
+>>> ps = PureSet(1, 2, 3, 4, 5)
+>>> ps.filter(lambda x: x % 2 == 0)
+PureSet(2, 4)
+>>> ps.filter(lambda x: x > 3)
+PureSet(4, 5)
+>>> ps.filter(lambda x: x > 10)
+PureSet()
+
+>>> ps = PureSet(1, 2, 3)
+>>> ps.map(lambda x: x * 2)
+PureSet(2, 4, 6)
+>>> ps.map(str)
+PureSet('1', '2', '3')
+>>> PureSet("a", "b", "c").map(str.upper)
+PureSet('A', 'B', 'C')
+
+>>> ps = PureSet(10, 20, 30)
+>>> ps.first()
+10
+>>> PureSet().first()
+
+>>> PureSet().first("empty")
+'empty'
+
+>>> ps = PureSet(10, 20, 30)
+>>> ps.last()
+30
+>>> PureSet().last()
+
+>>> PureSet().last("empty")
+'empty'
+
+>>> ps = PureSet(3, 1, 4, 1, 5, 9)
+>>> ps.sorted()
+PureSet(1, 3, 4, 5, 9)
+>>> ps.sorted(reverse=True)
+PureSet(9, 5, 4, 3, 1)
+>>> PureSet("banana", "pie", "a").sorted(key=len)
+PureSet('a', 'pie', 'banana')
+
+>>> ps = PureSet(1, 2, 3)
+>>> ps.unique() is ps
+True
+>>> PureSet(1, 1, 2, 2, 3, 3).unique()
+PureSet(1, 2, 3)
+
+>>> ps = PureSet(10, 20, 30)
+>>> ps.get(20)
+20
+>>> ps.get(40, "not found")
+'not found'
+
+>>> PureSet.get_signature(1)
+<class 'int'>
+>>> PureSet.get_signature('a')
+<class 'str'>
+>>> PureSet.get_signature(b'a')
+<class 'bytes'>
+>>> PureSet.get_signature([1, 2, 3])
+(<class 'list'>, (<class 'int'>, 3))
+>>> PureSet.get_signature((1, 2, 3))
+(<class 'tuple'>, (<class 'int'>, 3))
+>>> PureSet.get_signature({'a': 1, 'b': 2})
+(<class 'dict'>, {'a': <class 'int'>, 'b': <class 'int'>})
+>>> PureSet.get_signature({'a': 1, 'b': {'c': 2}})
+(<class 'dict'>, {'a': <class 'int'>, 'b': (<class 'dict'>, {'c': <class 'int'>})})
+>>> PureSet.get_signature({'a': 1, 'b': [2, 3]})
+(<class 'dict'>, {'a': <class 'int'>, 'b': (<class 'list'>, (<class 'int'>, 2))})
+
+>>> PureSet.freeze(42)
+42
+>>> PureSet.freeze('foo')
+'foo'
+>>> from enum import Enum
+>>> class Color(Enum): RED=1; GREEN=2
+>>> PureSet.freeze(Color.RED)
+(<enum 'Color'>, 1)
+>>> PureSet.freeze([1, 2, 3])
+(<class 'list'>, (1, 2, 3))
+>>> PureSet.freeze((1, 2, 3))
+(<class 'tuple'>, (1, 2, 3))
+>>> PureSet.freeze({1, 2, 3})
+(<class 'set'>, (1, 2, 3))
+>>> PureSet.freeze({'a': 1, 'b': 2})
+(<class 'dict'>, (('a', 1), ('b', 2)))
+>>> from collections import namedtuple
+>>> Point = namedtuple('Point', 'x y')
+>>> PureSet.freeze(Point(1, 2))
+(<class '__main__.Point'>, (1, 2))
+>>> class A: pass
+>>> PureSet.freeze(A())[:1]
+Traceback (most recent call last):
+    ...
+TypeError: Cannot safely freeze object of type <class '__main__.A'> for PureSet.
+>>> a = []; a.append(a)
+>>> PureSet.freeze(a)
+Traceback (most recent call last):
+    ...
+ValueError: Cyclical reference detected
+>>> ps = PureSet(PureSet(1, 2), PureSet(3, 4))
+>>> PureSet.freeze(ps)
+(<class 'pureset.PureSet'>, ((<class 'pureset.PureSet'>, (1, 2)), (<class 'pureset.PureSet'>, (3, 4))))
+
+>>> PureSet.restore(42)
+42
+>>> PureSet.restore((list, (1, 2, 3)))
+[1, 2, 3]
+>>> PureSet.restore((tuple, (4, 5, 6)))
+(4, 5, 6)
+>>> PureSet.restore((set, (7, 8))) == set((7, 8))
+True
+>>> PureSet.restore((dict, (('x', 10), ('y', 20))))
+{'x': 10, 'y': 20}
+>>> from enum import Enum
+>>> class Color(Enum): RED=1; GREEN=2
+>>> PureSet.restore((Color, 1))
+<Color.RED: 1>
+>>> from collections import namedtuple
+>>> Point = namedtuple('Point', 'x y')
+>>> PureSet.restore((Point, (3, 4)))
+Point(x=3, y=4)
+>>> class S:
+...   def __init__(self): self.a = 7
+>>> inst = PureSet.restore((S, (('a', 7),)))
+>>> type(inst) is S and inst.a == 7
+True
+>>> PureSet.restore((PureSet, ((tuple, (1, 2)), (tuple, (3, 4)))))
+PureSet((1, 2), (3, 4))
+
+>>> PureSet()
+PureSet()
+>>> PureSet(1, 2, 3, 2)
+PureSet(1, 2, 3)
+>>> PureSet([1, 2], [3, 4])
+PureSet([1, 2], [3, 4])
+>>> PureSet([1, 2], [3, 4], [1, 2])
+PureSet([1, 2], [3, 4])
+>>> PureSet(1, 'a')
+Traceback (most recent call last):
+...
+TypeError: Incompatible element type or shape at position 2:
+Exp: <class 'int'>;
+Got: <class 'str'>
+>>> PureSet('a', 'b', 'c')
+PureSet('a', 'b', 'c')
+>>> PureSet({'x': 1}, {'y': 2})
+Traceback (most recent call last):
+...
+TypeError: Incompatible element type or shape at position 2:
+Exp: (<class 'dict'>, {'x': <class 'int'>});
+Got: (<class 'dict'>, {'y': <class 'int'>})
+>>> PureSet({'x': 1}, {'x': 1})
+PureSet({'x': 1})
+
+>>> PureMap(a=1, b=2)
+PureMap('a': 1, 'b': 2)
+>>> PureMap({'x': 42, 'y': 99})
+PureMap('x': 42, 'y': 99)
+>>> PureMap([('foo', 1), ('bar', 2)])
+PureMap('foo': 1, 'bar': 2)
+>>> PureMap()  # empty
+PureMap()
+>>> PureMap({'a': 1, 'a': 2})
+PureMap('a': 2)
+>>> PureMap([('x', 1), ('x', 2)])
+PureMap('x': 2)
+>>> PureMap({'x': 1, 11: 2})
+Traceback (most recent call last):
+...
+TypeError: Key type/shape mismatch:
+Exp: <class 'str'>
+Got: <class 'int'>
+>>> PureMap({'x': 1, 'y': (3, 4)}, z=(1, 2))
+Traceback (most recent call last):
+...
+TypeError: PureMap cannot mix mapping/sequence and keyword arguments
+>>> pm = PureMap(a=5, b=8)
+>>> pm['a']
+5
+>>> 'b' in pm
+True
+>>> pm['foo']
+Traceback (most recent call last):
+...
+KeyError: 'foo'
+>>> dict(pm.items)
+{'a': 5, 'b': 8}
+>>> sorted(list(pm.keys))
+['a', 'b']
+>>> sorted(pm.values)
+[5, 8]
+>>> pm.as_dict()
+{'a': 5, 'b': 8}
+>>> type(pm.as_map()).__name__
+'mappingproxy'
+>>> repr(pm)
+"PureMap('a': 5, 'b': 8)"
+>>> str(pm)
+"PureMap('a': 5, 'b': 8)"
+>>> len(PureMap(a=1))
+1
+>>> len(PureMap())
+0
+>>> PureMap([('x', 1), ('y', 2)]) == PureMap(x=1, y=2)
+True
+>>> PureMap(a=1, b=2).copy()
+PureMap('a': 1, 'b': 2)
+"""
+
 import unittest
+import doctest
 import timeit
 import pickle
 import copy
@@ -10,10 +480,9 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent.absolute()))
-from pureset import PureSet
+from pureset import PureSet, PureMap
 
 ##### === CONSTRUCTION BASICS === #####
-
 class TestPureSetConstruction(unittest.TestCase):
     def test_basic_uniqueness(self):
         self.assertEqual(PureSet(1,2,1,3).to_list(), [1,2,3])
@@ -42,7 +511,6 @@ class TestPureSetConstruction(unittest.TestCase):
             PureSet(None, 2)
 
 ##### === INDEXING AND SLICING === #####
-
 class TestPureSetIndexing(unittest.TestCase):
     def test_indexing(self):
         ts = PureSet("a", "b", "c")
@@ -104,7 +572,6 @@ class TestPureSetObjectBehavior(unittest.TestCase):
         self.assertEqual(list(ts), [1,2,3,4])
 
 ##### === SET AND SEQUENCE OPERATIONS === #####
-
 class TestPureSetOps(unittest.TestCase):
     def test_union_intersection_difference_xor(self):
         a, b = PureSet(1, 2, 3), PureSet(2, 3, 4)
@@ -149,7 +616,6 @@ class TestPureSetSignature(unittest.TestCase):
             PureSet({'x':1}, {'x':'str'})
 
 ##### === TESTS FOR RESTORE AND ROUND-TRIP === #####
-
 class TestPureSetRestore(unittest.TestCase):
     def test_restore_round_trip(self):
         x = [{'a': [1, 2]}, {'a': [3, 4]}]
@@ -328,58 +794,6 @@ class TestTypeConsistency(unittest.TestCase):
             def __init__(self, x): self.y=x
         with self.assertRaises(TypeError): PureSet(A(1), B(1))
 
-##### === PERFORMANCE === #####
-import math
-n   = min(300, 10**6)
-gap = abs(92 - (math.log2(n)))
-
-class TestPureSetPerformance(unittest.TestCase):
-    def test_construction_speed_vs_set(self):
-        data = [i for i in range(n)] * 2
-        t_set = timeit.timeit("set(data)", globals={"data": data}, number=10)
-        t_ps = timeit.timeit("PureSet(*data)", globals={"data": data, "PureSet": PureSet}, number=10)
-        t_gap = ((100 * t_ps) / t_set)
-        t_diff = ((100 * (t_set * gap)) / t_set)
-        self.assertLess(
-            t_ps,
-            t_set * gap,
-            f"\nPureSet slower than set by {t_gap:.2f}%\n"
-            f"(set: {t_set:.5f}s, PureSet: {t_ps:.5f}s)\n"
-            f"Allowed gap: {t_set * gap:.5f}s ({t_diff:.2f}%)\n"
-        )
-
-    def test_membership_speed_vs_set(self):
-        data = [i for i in range(n)]
-        s = set(data)
-        ps = PureSet(*data)
-        idx = n // 2
-        t_set = timeit.timeit("idx in s", globals={"idx": idx, "s": s}, number=100000)
-        t_ps  = timeit.timeit("idx in ps", globals={"idx": idx, "ps": ps}, number=100000)
-        t_gap = ((100 * t_ps) / t_set)
-        t_diff = ((100 * (t_set * gap)) / t_set)
-        self.assertLess(
-            t_ps,
-            t_set * gap,
-            f"\nPureSet slower than set by {t_gap:.2f}%\n"
-            f"(set: {t_set:.5f}s, PureSet: {t_ps:.5f}s)\n"
-            f"Allowed gap: {t_set * gap:.5f}s ({t_diff:.2f}%)\n"
-        )
-
-    def test_to_frozenset_speed_vs_set(self):
-        data = [i for i in range(n)]
-        ps = PureSet(*data)
-        t_set = timeit.timeit("frozenset(data)", globals={"data": data}, number=100)
-        t_ps  = timeit.timeit("ps.to_frozenset()", globals={"ps": ps}, number=100)
-        t_gap = ((100 * t_ps) / t_set)
-        t_diff = ((100 * (t_set * gap)) / t_set)
-        self.assertLess(
-            t_ps,
-            t_set * gap,
-            f"\nPureSet slower than set by {t_gap:.2f}%\n"
-            f"(set: {t_set:.5f}s, PureSet: {t_ps:.5f}s)\n"
-            f"Allowed gap: {t_set * gap:.5f}s ({t_diff:.2f}%)\n"
-        )
-
 ##### === UTILITY/EXTENSION === #####
 class TestUtilityAndExtensions(unittest.TestCase):
     def test_to_list_tuple_frozenset(self):
@@ -534,6 +948,218 @@ class TestPureSetWeirdPythonNativeTypes(unittest.TestCase):
         self.assertEqual(len(PureSet(())), 1)
         self.assertEqual(len(PureSet({})), 1)
 
+class TestPureMap(unittest.TestCase):
+    def test_empty(self):
+        pm = PureMap()
+        self.assertEqual(len(pm), 0)
+        self.assertEqual(str(pm), "PureMap()")
+        self.assertEqual(repr(pm), "PureMap()")
+        self.assertEqual(dict(pm.items), {})
+
+    def test_basic_construction(self):
+        pm = PureMap(a=1, b=2)
+        self.assertEqual(len(pm), 2)
+        self.assertEqual(pm['a'], 1)
+        self.assertEqual(pm['b'], 2)
+        self.assertTrue('a' in pm)
+        self.assertTrue('b' in pm)
+        self.assertEqual(set(pm.keys), {'a', 'b'})
+        self.assertEqual(set(pm.values), {1, 2})
+
+    def test_from_mapping_and_iterable(self):
+        d = {'x': 10, 'y': 20}
+        pm1 = PureMap(d)
+        self.assertEqual(pm1['x'], 10)
+        self.assertEqual(pm1['y'], 20)
+        pm2 = PureMap([('foo', 1), ('bar', 2)])
+        self.assertEqual(pm2['foo'], 1)
+        self.assertEqual(pm2['bar'], 2)
+
+    def test_no_mix_positional_and_kwargs(self):
+        with self.assertRaises(TypeError):
+            PureMap({'a': 1}, b=2)
+        with self.assertRaises(TypeError):
+            PureMap([('c', 3)], d=4)
+
+    def test_duplicate_keys(self):
+        pm1 = PureMap({'a': 1, 'b': 2, 'a': 3})
+        pm2 = PureMap(a=3, b=2)
+        self.assertEqual(pm1, pm2)
+
+    def test_type_and_shape_homogeneity(self):
+        with self.assertRaises(TypeError):
+            PureMap({'x': 1, 2: 3})
+        with self.assertRaises(TypeError):
+            PureMap({'x': 1, 'y': 'not an int'})
+        with self.assertRaises(TypeError):
+            PureMap({'x': [1, 2]}, y=3)
+
+    def test_api_properties(self):
+        pm = PureMap(a=1, b=2)
+        self.assertIsInstance(pm.keys, PureSet)
+        self.assertIsInstance(pm.values, PureSet)
+        self.assertTrue(pm.signature[0], type('a'))
+        self.assertTrue(pm.signature[1], type(1))
+
+    def test_repr_and_str(self):
+        pm = PureMap(x=10, y=20)
+        s = str(pm)
+        r = repr(pm)
+        self.assertTrue(s.startswith("PureMap"))
+        self.assertTrue(r.startswith("PureMap"))
+        self.assertIn("'x': 10", s)
+        self.assertIn("'y': 20", r)
+
+    def test_mapping_methods(self):
+        pm = PureMap(a=5, b=9)
+        self.assertEqual(list(pm), ['a', 'b'])
+        self.assertEqual(len(pm), 2)
+        self.assertTrue('a' in pm)
+        self.assertEqual(list(pm.values), [5, 9])
+        self.assertEqual(dict(pm.items), dict(pm.as_dict()))
+
+    def test_get_and_contains(self):
+        pm = PureMap(a=1, b=2)
+        self.assertEqual(pm['a'], 1)
+        self.assertEqual(pm.get('a'), 1)
+        self.assertRaises(KeyError, lambda: pm['z'])
+        self.assertFalse('z' in pm)
+
+    def test_as_dict_and_as_map(self):
+        pm = PureMap(c=3, d=4)
+        d = pm.as_dict()
+        self.assertEqual(d, {'c': 3, 'd': 4})
+        mp = pm.as_map()
+        self.assertTrue(hasattr(mp, 'keys'))
+        self.assertEqual(mp['c'], 3)
+
+    def test_copy(self):
+        pm = PureMap(alpha=100)
+        cp = pm.copy()
+        self.assertEqual(cp, pm)
+        self.assertIsNot(cp, pm)
+
+    def test_restore_and_immutability(self):
+        pm = PureMap(a=1, b=2)
+        with self.assertRaises(TypeError):
+            pm['a'] = 10
+
+    def test_equality(self):
+        pm1 = PureMap(a=1, b=2)
+        pm2 = PureMap(a=1, b=2)
+        pm3 = PureMap(b=2, a=1)
+        self.assertEqual(pm1, pm2)
+        self.assertNotEqual(pm2, pm3)
+
+    def test_hashability(self):
+        pm1 = PureMap(a=1)
+        pm2 = PureMap(a=1)
+        self.assertEqual(hash(pm1), hash(pm2))
+        s = {pm1: "foo"}
+        self.assertEqual(s[pm2], "foo")
+
+    def test_nested_puremap(self):
+        pm1 = PureMap(a=PureMap(x=1, y=2), b=PureMap(x=3, y=4))
+        pm2 = PureMap(a=PureMap(x=1, y=2), b=PureMap(x=3, y=4))
+        self.assertEqual(pm1, pm2)
+        with self.assertRaises(TypeError):
+            pm1 = PureMap(x=1)
+            pm2 = PureMap(a=pm1, b=PureSet(2, 3))
+
+    def test_large_maps(self):
+        bigdict = {str(i): i for i in range(200)}
+        pm = PureMap(bigdict)
+        self.assertEqual(len(pm), 200)
+        for k, v in bigdict.items():
+            self.assertEqual(pm[k], v)
+
+    def test_unicode_and_bytes_keys(self):
+        pm = PureMap(Ω=123)
+        self.assertEqual(pm['Ω'], 123)
+        pm2 = PureMap({b'key': 10})
+        self.assertEqual(pm2[b'key'], 10)
+
+    def test_edgecase_empty_string_key(self):
+        pm = PureMap(**{'': 1})
+        self.assertTrue('' in pm)
+        self.assertEqual(pm[''], 1)
+
+    def test_items_property_and_items_iteration(self):
+        pm = PureMap(one=1, two=2)
+        items = list(pm.items)
+        self.assertTrue(('one', 1) in items)
+        self.assertTrue(('two', 2) in items)
+
+    def test_invalid_map_creation(self):
+        with self.assertRaises(TypeError):
+            PureMap(['x', 1])
+
+    def test_signature_property(self):
+        pm = PureMap(a=1, b=2)
+        self.assertTrue(isinstance(pm.signature, tuple))
+        self.assertEqual(pm.signature[0], type('a'))
+        self.assertEqual(pm.signature[1], type(1))
+
+    def test_len_zero_map(self):
+        pm = PureMap()
+        self.assertEqual(len(pm), 0)
+
+    def test_len_large_map(self):
+        pm = PureMap(**{str(i): i for i in range(100)})
+        self.assertEqual(len(pm), 100)
+
+    def test_order_preservation(self):
+        pairs = [('a', 1), ('b', 2), ('c', 3)]
+        pm = PureMap(pairs)
+        self.assertEqual(list(pm.keys), ['a', 'b', 'c'])
+
+    def test_invalid_kwarg_key_type(self):
+        with self.assertRaises(TypeError):
+            PureMap(**{b'bytes': 123})
+
+    def test_items_are_unique(self):
+        pm = PureMap(a=1, b=2)
+        self.assertEqual(len(set(pm.items)), 2)
+
+    def test_keys_and_values_are_puresets(self):
+        pm = PureMap(a=1, b=2)
+        self.assertIsInstance(pm.keys, PureSet)
+        self.assertIsInstance(pm.values, PureSet)
+
+    def test_mutating_underlying_dict_raises(self):
+        pm = PureMap(foo=7)
+        with self.assertRaises(TypeError):
+            pm.as_map()['x'] = 1
+
+    def test_as_map_is_mappingproxy(self):
+        pm = PureMap(l=1)
+        self.assertEqual(type(pm.as_map()).__name__, "mappingproxy")
+
+    def test_repr_str_equality(self):
+        pm = PureMap(a=1, b=2)
+        self.assertTrue(str(pm) == repr(pm))
+
+    def test_error_on_unhashable_key(self):
+        with self.assertRaises(TypeError):
+            PureMap({[]: 2})
+
+    def test_error_on_unhashable_value(self):
+        pm = PureMap(a=[])
+        self.assertEqual(pm['a'], [])
+
+    def test_error_on_invalid_constructor(self):
+        with self.assertRaises(TypeError):
+            PureMap(1, 2)
+
+    def test_items_and_keys_association(self):
+        pm = PureMap(red=1, blue=2)
+        k = list(pm.keys)[0]
+        v = pm[k]
+        self.assertEqual((k, v), list(pm.items)[0])
+
+
 ##### === MAIN ENTRYPOINT === #####
 if __name__ == "__main__":
+    doctest.testmod()
+    print()
     unittest.main()
