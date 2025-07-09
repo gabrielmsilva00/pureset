@@ -1,5 +1,5 @@
 <p align="center">
-<img src="https://raw.githubusercontent.com/gabrielmsilva00/pureset/e920683cd8f19ac740eb1f06cc4df1a30a5fe5d1/img/PureSet.svg"><br/>
+<img src="https://raw.githubusercontent.com/gabrielmsilva00/pureset/c89e731c4a3c8a8c05f5572a07ddf7d89c8f02b2/img/PureSet.svg"><br/>
 <a href="https://python.org/downloads"><img src="https://img.shields.io/badge/Python-3.9+-blue.svg" alt="Python Version" width=256 style="vertical-align:middle;margin:5px"><br/>
 <a href="https://www.apache.org/licenses/LICENSE-2.0.txt"><img src="https://img.shields.io/badge/License-Apache%202.0-green.svg" alt="License" width=256 style="vertical-align:middle;margin:5px"><br/>
 <a href="https://github.com/gabrielmsilva00/pureset"><img src="https://img.shields.io/badge/GitHub-Repository-2A3746?logo=github" width=256 style="vertical-align:middle;margin:5px"><br/>
