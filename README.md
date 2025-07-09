@@ -158,23 +158,6 @@ True
 
 ---
 
-### **Freeze/Restore: Reliable, Deep Immutability and Serialization**
-
-```pycon
->>> x = [{'a': [1, 2]}, {'a': [3, 4]}]
->>> frozen = PureSet.freeze(x)
->>> PureSet.restore(frozen)
-[{'a': [1, 2]}, {'a': [3, 4]}]
-```
-
-```pycon
->>> pm = PureMap({'k1': [1, 2]})
->>> PureMap.restore(PureMap.freeze(pm)) == pm
-True
-```
-
----
-
 ## **Advanced Features and Extensibility**
 
 - **Rich Set Algebra (PureSet):** `|`, `&`, `-`, `^`
